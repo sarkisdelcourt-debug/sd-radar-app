@@ -340,30 +340,48 @@ document.getElementById('visionneuse').onclick = e => { e.currentTarget.style.di
 // eBay donne des vignettes de 225 px : on demande la grande version (1 600 px) de la même photo
 function grandePhoto(u) { return String(u).replace(/\/s-l\d+\.(jpg|jpeg|png|webp)(\?.*)?$/i, '/s-l1600.$1'); }
 
+// Geste : glisser franchement à droite (garder) ou à gauche (passer). Un mouvement vertical (faire
+// défiler, regarder la photo) n'est jamais un swipe ; un geste interrompu par le navigateur
+// (pointercancel) n'en est pas un non plus. Vers le haut = « plus tard » à la souris seulement.
 function brancherGeste(el) {
-  let x0 = 0, y0 = 0, actif = false;
+  let x0 = 0, y0 = 0, dx = 0, dy = 0, actif = false, sens = null, souris = false;
+  const remettre = () => {
+    actif = false; sens = null; el.classList.remove('glisse'); el.style.transform = '';
+    ['garder', 'rejeter', 'plus_tard'].forEach(d => montrer(d, 0));
+  };
   el.addEventListener('pointerdown', e => {
     if (e.target.closest('a, button')) return;
-    actif = true; x0 = e.clientX; y0 = e.clientY; el.classList.add('glisse');
-    el.setPointerCapture(e.pointerId);
+    actif = true; sens = null; x0 = e.clientX; y0 = e.clientY; dx = dy = 0;
+    souris = e.pointerType === 'mouse';
+    el.classList.add('glisse');
   });
   el.addEventListener('pointermove', e => {
     if (!actif) return;
-    const dx = e.clientX - x0, dy = e.clientY - y0;
-    el.style.transform = `translate(${dx}px,${Math.min(dy, 0)}px) rotate(${dx / 25}deg)`;
-    montrer('garder', dx / 120); montrer('rejeter', -dx / 120); montrer('plus_tard', -dy / 120 - Math.abs(dx) / 200);
+    dx = e.clientX - x0; dy = e.clientY - y0;
+    if (!sens && Math.hypot(dx, dy) > 14) {
+      sens = Math.abs(dx) > Math.abs(dy) * 1.3 ? 'h' : 'v';
+      if (sens === 'v' && !souris) { remettre(); return; }  // défilement : on laisse faire
+      try { el.setPointerCapture(e.pointerId); } catch (err) {}
+    }
+    if (!sens) return;
+    const vy = sens === 'v' ? Math.min(dy, 0) : 0;
+    el.style.transform = `translate(${sens === 'h' ? dx : 0}px,${vy}px) rotate(${sens === 'h' ? dx / 25 : 0}deg)`;
+    const s = seuil();
+    montrer('garder', sens === 'h' ? dx / s : 0); montrer('rejeter', sens === 'h' ? -dx / s : 0);
+    montrer('plus_tard', sens === 'v' ? -dy / 160 : 0);
   });
-  const fin = e => {
-    if (!actif) return; actif = false; el.classList.remove('glisse');
-    const dx = e.clientX - x0, dy = e.clientY - y0;
-    if (dx > 110) decider('garder');
-    else if (dx < -110) decider('rejeter');
-    else if (dy < -110) decider('plus_tard');
-    else { el.style.transform = ''; ['garder','rejeter','plus_tard'].forEach(d => montrer(d, 0)); }
-  };
-  el.addEventListener('pointerup', fin);
-  el.addEventListener('pointercancel', fin);
+  el.addEventListener('pointerup', () => {
+    if (!actif) return;
+    const s = seuil(), h = sens === 'h', v = sens === 'v' && souris;
+    actif = false; el.classList.remove('glisse');
+    if (h && dx > s) decider('garder');
+    else if (h && dx < -s) decider('rejeter');
+    else if (v && dy < -160) decider('plus_tard');
+    else remettre();
+  });
+  el.addEventListener('pointercancel', remettre);  // jamais de décision sur un geste interrompu
 }
+const seuil = () => Math.max(110, window.innerWidth * 0.3);
 function montrer(d, v) { const e = document.getElementById('e-' + d); if (e) e.style.opacity = Math.max(0, Math.min(1, v)); }
 
 async function envoyer(url, decision, motif, carte) {
