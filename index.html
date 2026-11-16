@@ -139,7 +139,8 @@ addEventListener('online', viderFile);
 const ORDRE = { solide: 0, a_voir: 1 };
 function aTrier(cartes, swipes) {
   const maintenant = Date.now();
-  return cartes.filter(c => ORDRE[c.niveau] !== undefined).filter(c => {
+  return cartes.filter(c => ORDRE[c.niveau] !== undefined)
+    .filter(c => !c.enchere || Date.parse(c.enchere.fin) > maintenant).filter(c => {
     const s = swipes[c.url];
     if (!s) return true;
     return s.decision === 'plus_tard' && maintenant - Date.parse(s.le) > 24 * 3600e3;
@@ -179,6 +180,12 @@ const toast = document.getElementById('toast');
 let file = [], courante = null, dernierSwipe = null, tToast = null;
 const NIVEAU = { solide: 'SOLIDE', a_voir: 'À VÉRIFIER' };
 const SIGNAUX = { prix_lt_50pct_argus: 'Prix < 50 % de l’argus : méfiance (arnaque possible)' };
+function finEnchere(fin) {
+  const s = Math.round((Date.parse(fin) - Date.now()) / 1000);
+  if (!(s > 0)) return 'terminée';
+  const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60);
+  return 'dans ' + (h >= 48 ? Math.floor(h / 24) + ' j' : h ? h + ' h ' + String(m).padStart(2, '0') : m + ' min');
+}
 const eur = n => Math.round(n).toLocaleString('fr-FR') + ' €';
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
@@ -307,6 +314,7 @@ function afficher() {
       <div class="marge"><small>Marge prudente</small><strong>${eur(c.marge_prud ?? c.marge_med)}</strong></div>
     </div>
     <p class="infos">${infos}</p>
+    ${c.enchere ? `<p class="infos"><span><b>Enchère</b> · fin ${finEnchere(c.enchere.fin)} · mise actuelle ${eur(c.enchere.actuelle)}${c.enchere.nb != null ? ' (' + c.enchere.nb + ' mise' + (c.enchere.nb > 1 ? 's' : '') + ')' : ''}${c.enchere.plafond ? ' · <b>ne pas dépasser ' + eur(c.enchere.plafond) + '</b>' : ''}</span></p>` : ''}
     ${c.fourchette ? `<p class="infos"><span><b>Croisement des sites :</b> ${Object.entries(c.fourchette.sites).map(([s, v]) => esc(s) + ' ' + eur(v.med) + ' (' + v.n + ')').join(' · ')} → fourchette ${eur(c.fourchette.bas)} – ${eur(c.fourchette.haut)}</span></p>` : ''}
     ${c.revente ? `<p class="infos"><span><b>Revente conseillée : ${esc(c.revente.marche)}</b> — argus ${eur(c.revente.argus_med)} (${c.revente.n} annonces), marge prudente ${eur(c.revente.marge_prud)} après surcoût de transport</span></p>` : ''}
     ${alertes}
