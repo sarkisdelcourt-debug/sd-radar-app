@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SD Radar - Japon</title>
+<style>
+  :root { --fond:#101114; --carte:#1c1e24; --texte:#f4f5f7; --doux:#b6bac4; --ligne:#3a3e48; --accent:#ffd166; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--fond); color:var(--texte); font:16px/1.4 system-ui,sans-serif; padding:16px; }
+  main { max-width:520px; margin:0 auto; }
+  h1 { font-size:20px; margin:0 0 4px; } p.aide { color:var(--doux); font-size:14px; margin:0 0 14px; }
+  label { display:block; font-size:13px; color:var(--doux); margin:12px 0 4px; }
+  input, select { width:100%; background:#14161a; color:var(--texte); border:2px solid var(--ligne);
+                  border-radius:8px; padding:10px; font:inherit; }
+  .deux { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  button { width:100%; margin-top:16px; padding:14px; font:inherit; font-weight:700; border-radius:10px;
+           border:2px solid #fff; background:#fff; color:#101114; cursor:pointer; }
+  .res { background:var(--carte); border:2px solid var(--ligne); border-radius:12px; padding:14px; margin-top:16px; }
+  .gros { font-size:30px; font-weight:800; color:var(--accent); }
+  .ok { font-weight:800; } .ko { font-weight:800; color:var(--doux); text-decoration:underline; }
+  table { width:100%; font-size:14px; border-collapse:collapse; } td { padding:3px 0; } td:last-child { text-align:right; }
+  #liste { background:var(--carte); border:2px solid var(--ligne); border-radius:8px; margin-top:4px; }
+  #liste div { padding:8px 10px; cursor:pointer; border-bottom:1px solid var(--ligne); font-size:14px; }
+  small { color:var(--doux); }
+</style>
+</head>
+<body>
+<main>
+  <p><a href="./" style="color:var(--doux)">← Retour aux cartes</a></p>
+  <h1>Calculateur Japon</h1>
+  <p class="aide">Jusqu'à combien miser (en yens) sur Yahoo Japon via FromJapan, tous frais compris.
+  Les frais sont des hypothèses : corrige-les avec ta vraie facture.</p>
+
+  <label>Modèle (cherche dans le catalogue)</label>
+  <input id="q" placeholder="ex. Stratocaster CBS 1976, Klon Centaur…" autocomplete="off">
+  <div id="liste"></div>
+  <div class="deux">
+    <div><label>Argus médian (€)</label><input id="argus" type="number" inputmode="decimal"></div>
+    <div><label>Bas de fourchette (€)</label><input id="p25" type="number" inputmode="decimal"></div>
+  </div>
+  <div class="deux">
+    <div><label>Famille</label>
+      <select id="famille"><option value="guitares">Guitare</option><option value="basses">Basse</option>
+      <option value="pedales_racks">Pédale / rack</option><option value="amplis">Ampli</option>
+      <option value="claviers_synthes">Clavier / synthé</option></select></div>
+    <div><label>État</label>
+      <select id="etat"><option value="">Non précisé</option><option value="excellent">Excellent</option>
+      <option value="bon">Bon</option><option value="correct">Correct</option></select></div>
+  </div>
+  <label>Mise envisagée (¥) — facultatif</label>
+  <input id="mise" type="number" inputmode="numeric" placeholder="ex. 120000">
+  <div class="deux">
+    <div><label>Expédition internationale (€)</label><input id="exp" type="number" placeholder="auto"></div>
+    <div><label>Frais au Japon (¥)</label><input id="dom" type="number" value="1000"></div>
+  </div>
+  <div class="deux">
+    <div><label>Commission FromJapan (%)</label><input id="com" type="number" value="10"></div>
+    <div><label>Frais fixes (¥)</label><input id="fixe" type="number" value="300"></div>
+  </div>
+  <button id="go">Calculer le plafond</button>
+  <div id="res"></div>
+</main>
+<script src="calcul.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+// Données : Supabase (lien de configuration du téléphone) ou serveur local du PC.
+let CFG = null;
+try { CFG = JSON.parse(localStorage.getItem('sdradar_cfg') || 'null'); } catch (e) { CFG = null; }
+async function rpc(nom, args) {
+  const r = await fetch(`${CFG.u}/rest/v1/rpc/${nom}`, { method: 'POST', signal: AbortSignal.timeout(30000),
+    headers: { apikey: CFG.k, Authorization: 'Bearer ' + CFG.k, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ p_jeton: CFG.t, ...args }) });
+  if (!r.ok) throw new Error('Supabase ' + r.status);
+  return r.json();
+}
+let config = null;
+try { config = JSON.parse(localStorage.getItem('sdradar_config') || 'null'); } catch (e) { config = null; }
+async function chargerConfig() {
+  try {
+    const c = CFG ? await rpc('radar_lire_config', {}) : await (await fetch('/api/config')).json();
+    if (c && c.regles && c.taux_jpy) { config = c; try { localStorage.setItem('sdradar_config', JSON.stringify(c)); } catch (e) {} }
+  } catch (e) { /* hors ligne : on garde la dernière config connue */ }
+}
+const configPrete = chargerConfig();
+async function chercherModeles(q) {
+  return CFG ? rpc('radar_modeles', { p_q: q }) : (await fetch('/api/modeles?q=' + encodeURIComponent(q))).json();
+}
+const eur = n => Math.round(n).toLocaleString('fr-FR') + ' €';
+const yen = n => Math.round(n).toLocaleString('fr-FR') + ' ¥';
+let cat = 'guitare';
+const PORT = { guitares: 'guitare', basses: 'basse', pedales_racks: 'pedale', amplis: 'ampli_combo', claviers_synthes: 'clavier_61' };
+let tmp;
+$('q').oninput = () => { clearTimeout(tmp); tmp = setTimeout(async () => {
+  const q = $('q').value.trim(); if (q.length < 3) { $('liste').innerHTML = ''; return; }
+  try {
+    const r = await chercherModeles(q);
+    $('liste').innerHTML = r.map((m, i) => `<div data-i="${i}">${m.marque} ${m.modele}
+      <small>· argus ${m.mediane ? eur(m.mediane) : '?'} (${m.n || 0} annonces)</small></div>`).join('')
+      || '<div><small>Aucun modèle</small></div>';
+    $('liste').querySelectorAll('div[data-i]').forEach(d => d.onclick = () => {
+      const m = r[d.dataset.i]; $('q').value = m.marque + ' ' + m.modele; $('liste').innerHTML = '';
+      if (m.mediane) $('argus').value = Math.round(m.mediane);
+      if (m.p25) $('p25').value = Math.round(m.p25);
+      if (PORT[m.famille]) $('famille').value = m.famille;
+      cat = m.categorie_port || PORT[m.famille] || 'guitare';
+    });
+  } catch (e) { $('liste').innerHTML = '<div><small>Recherche indisponible : saisis l’argus à la main</small></div>'; }
+}, 350); };
+$('famille').onchange = () => { cat = PORT[$('famille').value] || cat; };
+$('go').onclick = async () => {
+  const corps = { argus_med: $('argus').value, argus_p25: $('p25').value, famille: $('famille').value,
+    categorie_port: cat, etat: $('etat').value, mise_yen: $('mise').value, expedition_eur: $('exp').value,
+    domestiques_yen: $('dom').value, commission_pct: $('com').value, commission_fixe_yen: $('fixe').value };
+  if (!corps.argus_med) { $('res').innerHTML = '<p class="aide">Renseigne l’argus.</p>'; return; }
+  if (!config) await configPrete;
+  if (!config) { $('res').innerHTML = '<p class="aide">Règles de calcul indisponibles (pas de connexion) : réessaie.</p>'; return; }
+  const r = SDCalcul.calcul(config.regles, corps, config.taux_jpy);
+  const c = o => `<table>${Object.entries({ 'Expédition + frais au Japon': o.transport, 'Commission': o.commission,
+    'Droits de douane': o.droits, 'TVA': o.tva }).map(([k, v]) => `<tr><td>${k}</td><td>${eur(v)}</td></tr>`).join('')}</table>`;
+  let h = '';
+  if (r.plafond) h += `<div class="res"><small>Plafond de mise</small><div class="gros">${yen(r.plafond.mise_yen)}</div>
+    <div>≈ ${eur(r.plafond.mise_eur)} · marge prudente ${eur(r.plafond.marge_prudente_eur)}</div>${c(r.plafond.couts)}
+    <p class="aide">Ne mise pas au-dessus. Taux : ${r.taux_yen.toFixed(1)} ¥ pour 1 €.</p></div>`;
+  else h += '<div class="res"><b>Aucune mise ne laisse une marge solide</b> avec ces frais.</div>';
+  if (r.mise) h += `<div class="res"><small>Ta mise de ${yen($('mise').value)} (${eur(r.mise.mise_eur)})</small>
+    <div class="${r.mise.niveau === 'solide' ? 'ok' : 'ko'}">${r.mise.niveau === 'solide' ? '✓ Marge solide'
+      : r.mise.tres_bas ? '△ Prix très bas (moins de 30 % de l’argus) : copie ou faux modèle ? à vérifier'
+      : r.mise.niveau === 'a_voir' ? '△ À vérifier (marge seulement au cas médian)' : '✕ Pas rentable'}</div>
+    <div>Marge prudente ${r.mise.marge_prudente_eur == null ? '?' : eur(r.mise.marge_prudente_eur)}
+      · médiane ${eur(r.mise.marge_mediane_eur)}</div>${c(r.mise.couts)}</div>`;
+  $('res').innerHTML = h;
+};
+</script>
+</body>
+</html>
