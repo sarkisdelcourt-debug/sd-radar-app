@@ -13,7 +13,7 @@
   * { box-sizing:border-box; }
   body { margin:0; background:var(--fond); color:var(--texte); font:16px/1.35 system-ui,sans-serif;
          min-height:100dvh; display:flex; flex-direction:column; overscroll-behavior:none; }
-  header { padding:12px 16px; display:flex; justify-content:space-between; align-items:center;
+  header { padding:10px 12px; display:flex; flex-wrap:wrap; gap:8px; justify-content:space-between; align-items:center;
            border-bottom:1px solid var(--ligne); }
   header b { font-size:18px; letter-spacing:.5px; }
   #reste { color:var(--doux); font-size:14px; }
@@ -60,7 +60,7 @@
   #e-garder { right:16px; color:#fff; border-color:#fff; }
   #e-rejeter { left:16px; color:var(--doux); border-style:dashed; border-color:var(--doux); }
   #e-plus_tard { left:50%; margin-left:-40px; color:var(--accent); border-color:var(--accent); }
-  nav { display:flex; gap:8px; align-items:center; }
+  nav { display:flex; flex-wrap:wrap; gap:6px; align-items:center; }
   nav button, nav select { background:transparent; color:var(--texte); border:2px solid var(--ligne);
            border-radius:8px; padding:6px 10px; font:inherit; font-size:14px; }
   nav button.on { background:#fff; color:#101114; border-color:#fff; font-weight:700; }
@@ -89,7 +89,7 @@
 </head>
 <body>
 <header><b>SD Radar</b>
-  <nav><button id="n-trier" class="on">À trier</button><button id="n-gardees">Gardées</button><a href="japon.html" style="color:var(--texte);border:2px solid var(--ligne);border-radius:8px;padding:6px 10px;text-decoration:none;font-size:14px">¥</a>
+  <nav><button id="n-trier" class="on">À trier</button><button id="n-encheres">Enchères</button><button id="n-chasseur">Chasseur</button><button id="n-gardees">Gardées</button><a href="japon.html" style="color:var(--texte);border:2px solid var(--ligne);border-radius:8px;padding:6px 10px;text-decoration:none;font-size:14px">¥</a>
   <select id="f-niveau"><option value="">Tous</option><option value="solide">Solides</option></select></nav>
   <span id="reste"></span></header>
 <main id="scene"></main>
@@ -234,13 +234,12 @@ async function charger() {
   filtrer();
 }
 function majFile() {  // nouvelles données : la carte affichée reste en tête, rien ne saute
-  const n = document.getElementById('f-niveau').value;
   toutes = aTrier(etat.cartes, etat.swipes);
-  const nouvelle = toutes.filter(c => !n || c.niveau === n);
+  const nouvelle = selection(toutes);
   if (courante && nouvelle.some(c => c.url === courante.url)) {
     file = [courante, ...nouvelle.filter(c => c.url !== courante.url)];
-    reste.textContent = file.length + ' à trier';
-  } else { file = nouvelle; if (vue === 'trier') afficher(); }
+    reste.textContent = file.length + (vue === 'encheres' ? ' enchères' : ' à trier');
+  } else { file = nouvelle; if (enDeck()) afficher(); }
 }
 async function chargerDistant() {
   if (etat.cartes.length) { diag = 'cache du téléphone'; toutes = aTrier(etat.cartes, etat.swipes); filtrer(); }
@@ -270,10 +269,19 @@ async function chargerDistant() {
     else reste.textContent = (file.length) + ' à trier · hors ligne';
   }
 }
-function filtrer() {
+// Cartes affichées selon l'onglet : « À trier » (filtre de niveau) ou « Enchères » (fin la plus proche
+// d'abord, enchères terminées retirées).
+function selection(liste) {
   const n = document.getElementById('f-niveau').value;
-  file = toutes.filter(c => !n || c.niveau === n);
-  if (vue === 'trier') afficher(); else gardees();
+  const l = liste.filter(c => !n || c.niveau === n);
+  if (vue !== 'encheres') return l;
+  return l.filter(c => c.enchere && Date.parse(c.enchere.fin) > Date.now())
+    .sort((a, b) => Date.parse(a.enchere.fin) - Date.parse(b.enchere.fin));
+}
+const enDeck = () => vue === 'trier' || vue === 'encheres';
+function filtrer() {
+  file = selection(toutes);
+  if (enDeck()) afficher(); else if (vue === 'chasseur') chasseur(); else gardees();
 }
 async function gardees() {
   const liste = await api.gardees();
@@ -293,15 +301,56 @@ function onglet(v) {
   vue = v;
   document.getElementById('n-trier').classList.toggle('on', v === 'trier');
   document.getElementById('n-gardees').classList.toggle('on', v === 'gardees');
-  document.querySelector('footer').style.display = v === 'trier' ? 'flex' : 'none';
+  document.getElementById('n-encheres').classList.toggle('on', v === 'encheres');
+  document.getElementById('n-chasseur').classList.toggle('on', v === 'chasseur');
+  document.querySelector('footer').style.display = v === 'trier' || v === 'encheres' ? 'flex' : 'none';
+  courante = null;
   filtrer();
 }
 document.getElementById('n-trier').onclick = () => onglet('trier');
 document.getElementById('n-gardees').onclick = () => onglet('gardees');
+document.getElementById('n-encheres').onclick = () => onglet('encheres');
+document.getElementById('n-chasseur').onclick = () => onglet('chasseur');
+// --- Chasseur : annonces qui correspondent aux fiches de recherche (scripts/chasse.py)
+async function lireChasse() {
+  try {
+    const c = CFG ? await rpc('radar_lire_config', {}) : await (await fetch('/api/config')).json();
+    try { localStorage.setItem('sdradar_config', JSON.stringify(c)); } catch (e) {}
+    return c.chasse;
+  } catch (e) {
+    try { return JSON.parse(localStorage.getItem('sdradar_config') || 'null').chasse; } catch (x) { return null; }
+  }
+}
+async function chasseur() {
+  document.querySelector('footer').style.display = 'none';
+  scene.innerHTML = '<p class="vide">Chargement des recherches…</p>';
+  const ch = await lireChasse();
+  if (vue !== 'chasseur') return;
+  if (!ch || !ch.fiches) { scene.innerHTML = '<p class="vide">Pas encore de recherche chasseur.</p>'; reste.textContent = ''; return; }
+  const total = ch.fiches.reduce((n, f) => n + f.resultats.length, 0);
+  reste.textContent = total + ' trouvée' + (total > 1 ? 's' : '');
+  scene.innerHTML = '<div class="liste">' + ch.fiches.map((f, i) => `
+    <h1 style="font-size:17px;margin:16px 0 2px">${esc(f.nom)}</h1>
+    <p class="infos" style="margin:0 0 8px">${f.prix_max ? 'Budget ' + eur(f.prix_max) : 'Budget non précisé'} · ${f.resultats.length} annonce${f.resultats.length > 1 ? 's' : ''}</p>
+    ${f.resultats.map((r, j) => `<div class="gardee">
+      ${r.photos && r.photos.length ? `<img src="${esc(grandePhoto(r.photos[0]))}" referrerpolicy="no-referrer" alt="" data-f="${i}" data-r="${j}" style="cursor:pointer">` : ''}
+      <div><b>${esc(r.titre)}</b>
+        ${r.prix != null ? eur(r.prix) : 'prix ?'}${r.prix_origine ? ' <small>(' + esc(r.prix_origine) + ')</small>' : ''} · ${esc(r.source)}${r.lieu ? ' · ' + esc(r.lieu) : ''}
+        ${r.dans_budget ? '' : ' · <b style="text-decoration:underline">hors budget</b>'}
+        ${r.enchere && r.enchere.fin ? '<br>Enchère, fin ' + finEnchere(r.enchere.fin) : ''}<br>
+        <a href="${esc(r.url)}" target="_blank" rel="noopener">Ouvrir l’annonce</a></div></div>`).join('')
+      || '<p class="infos">Rien pour l’instant : la recherche est relancée à chaque mise à jour.</p>'}`).join('')
+    + `<p class="infos">Dernière recherche : ${new Date(ch.le).toLocaleString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</p></div>`;
+  scene.querySelectorAll('img[data-f]').forEach(im => im.onclick = () => {
+    const r = ch.fiches[im.dataset.f].resultats[im.dataset.r];
+    ouvrirPhotos(r.photos.map(grandePhoto));
+  });
+}
 function afficher() {
   courante = file[0] || null;
-  reste.textContent = file.length ? file.length + ' à trier' : '';
+  reste.textContent = file.length ? file.length + (vue === 'encheres' ? ' enchères' : ' à trier') : '';
   if (!courante) {
+    if (vue === 'encheres') { scene.innerHTML = '<p class="vide">Aucune enchère en cours dans tes cartes.<br>Les enchères eBay sont relues à chaque mise à jour.</p>'; return; }
     scene.innerHTML = '<p class="vide">Plus rien à trier.<br>Reviens après le prochain balayage.<br><small>(' + esc(diag) + ' · filtre : ' + esc(document.getElementById('f-niveau').value || 'tous') + ')</small></p>';
     return;
   }
