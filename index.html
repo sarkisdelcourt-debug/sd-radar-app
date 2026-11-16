@@ -89,7 +89,7 @@
 </head>
 <body>
 <header><b>SD Radar</b>
-  <nav><button id="n-trier" class="on">À trier</button><button id="n-encheres">Enchères</button><button id="n-chasseur">Chasseur</button><button id="n-gardees">Gardées</button><a href="japon.html" style="color:var(--texte);border:2px solid var(--ligne);border-radius:8px;padding:6px 10px;text-decoration:none;font-size:14px">¥</a>
+  <nav><button id="n-trier" class="on">À trier</button><button id="n-encheres">Enchères</button><button id="n-chasseur">Chasseur</button><button id="n-argus">Argus</button><button id="n-gardees">Gardées</button><a href="japon.html" style="color:var(--texte);border:2px solid var(--ligne);border-radius:8px;padding:6px 10px;text-decoration:none;font-size:14px">¥</a>
   <select id="f-niveau"><option value="">Tous</option><option value="solide">Solides</option></select></nav>
   <span id="reste"></span></header>
 <main id="scene"></main>
@@ -281,7 +281,7 @@ function selection(liste) {
 const enDeck = () => vue === 'trier' || vue === 'encheres';
 function filtrer() {
   file = selection(toutes);
-  if (enDeck()) afficher(); else if (vue === 'chasseur') chasseur(); else gardees();
+  if (enDeck()) afficher(); else if (vue === 'chasseur') chasseur(); else if (vue === 'argus') argus(); else gardees();
 }
 async function gardees() {
   const liste = await api.gardees();
@@ -303,6 +303,7 @@ function onglet(v) {
   document.getElementById('n-gardees').classList.toggle('on', v === 'gardees');
   document.getElementById('n-encheres').classList.toggle('on', v === 'encheres');
   document.getElementById('n-chasseur').classList.toggle('on', v === 'chasseur');
+  document.getElementById('n-argus').classList.toggle('on', v === 'argus');
   document.querySelector('footer').style.display = v === 'trier' || v === 'encheres' ? 'flex' : 'none';
   courante = null;
   filtrer();
@@ -311,6 +312,31 @@ document.getElementById('n-trier').onclick = () => onglet('trier');
 document.getElementById('n-gardees').onclick = () => onglet('gardees');
 document.getElementById('n-encheres').onclick = () => onglet('encheres');
 document.getElementById('n-chasseur').onclick = () => onglet('chasseur');
+document.getElementById('n-argus').onclick = () => onglet('argus');
+// --- Argus : recherche dans le catalogue, argus le plus récent de chaque modèle
+function argus() {
+  document.querySelector('footer').style.display = 'none';
+  reste.textContent = '';
+  scene.innerHTML = `<div class="liste">
+    <input id="a-q" placeholder="Modèle : ex. Klon Centaur, JEM 20th, Stratocaster CBS 1976" autocomplete="off"
+      style="width:100%;background:#14161a;color:#fff;border:2px solid var(--ligne);border-radius:8px;padding:10px;font:inherit">
+    <p class="infos">Prix demandés (pas des ventes). Moins de 3 annonces : argus peu fiable.</p>
+    <div id="a-res"></div></div>`;
+  let t;
+  document.getElementById('a-q').oninput = e => { clearTimeout(t); t = setTimeout(async () => {
+    const q = e.target.value.trim(), zone = document.getElementById('a-res');
+    if (q.length < 3) { zone.innerHTML = ''; return; }
+    zone.innerHTML = '<p class="infos">Recherche…</p>';
+    try {
+      const r = CFG ? await rpc('radar_modeles', { p_q: q }) : await (await fetch('/api/modeles?q=' + encodeURIComponent(q))).json();
+      zone.innerHTML = r.map(m => `<div class="gardee"><div><b>${esc(m.marque)} ${esc(m.modele)}</b>
+        ${m.mediane ? 'Argus <b>' + eur(m.mediane) + '</b>' + (m.p25 ? ' · fourchette basse ' + eur(m.p25) : '') : 'pas d’argus'}
+        · ${m.n || 0} annonce${(m.n || 0) > 1 ? 's' : ''}${(m.n || 0) < 3 ? ' <b style="text-decoration:underline">peu fiable</b>' : ''}</div></div>`).join('')
+        || '<p class="infos">Aucun modèle trouvé.</p>';
+    } catch (err) { zone.innerHTML = '<p class="infos">Recherche indisponible : ' + esc(err.message) + '</p>'; }
+  }, 400); };
+  document.getElementById('a-q').focus();
+}
 // --- Chasseur : annonces qui correspondent aux fiches de recherche (scripts/chasse.py)
 async function lireChasse() {
   try {
