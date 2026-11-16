@@ -105,7 +105,7 @@ const SERVEUR_LOCAL = /^(localhost|127\.|192\.168\.|10\.)/.test(location.hostnam
 let CFG = null;
 try { CFG = JSON.parse(localStorage.getItem(CLE_CFG) || 'null'); } catch (e) { CFG = null; }
 async function rpc(nom, args) {
-  const r = await fetch(`${CFG.u}/rest/v1/rpc/${nom}`, { method: 'POST',
+  const r = await fetch(`${CFG.u}/rest/v1/rpc/${nom}`, { method: 'POST', signal: AbortSignal.timeout(40000),
     headers: { apikey: CFG.k, Authorization: 'Bearer ' + CFG.k, 'Content-Type': 'application/json' },
     body: JSON.stringify({ p_jeton: CFG.t, ...args }) });
   if (!r.ok) throw new Error('Supabase ' + r.status);
@@ -177,6 +177,7 @@ function ecranConfig() {
 }
 async function charger() {
   if (!CFG && !SERVEUR_LOCAL) { ecranConfig(); return; }
+  scene.innerHTML = '<p class="vide">Chargement des cartes…</p>';
   try { toutes = await api.cartes(); } catch (e) { scene.innerHTML = '<p class="vide">Connexion impossible (' + esc(e.message) + ').</p>'; return; }
   filtrer();
 }
