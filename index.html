@@ -27,8 +27,16 @@
   .niveau.solide { background:#fff; color:#101114; }
   .niveau.a_voir { background:transparent; color:var(--texte); border:2px dashed var(--doux); }
   .source { float:right; color:var(--doux); font-size:13px; }
-  .photo { width:100%; height:200px; object-fit:cover; border-radius:10px; margin:10px 0 0;
-           background:#14161a; pointer-events:none; }
+  .cadre-photo { position:relative; margin:10px 0 0; }
+  .photo { display:block; width:100%; height:auto; max-height:45vh; object-fit:contain; border-radius:10px;
+           background:#000; pointer-events:none; }
+  .agrandir { position:absolute; right:8px; bottom:8px; background:rgba(0,0,0,.75); color:#fff;
+              border:2px solid #fff; border-radius:8px; padding:6px 10px; font:inherit; font-size:14px; }
+  #visionneuse { position:fixed; inset:0; background:#000; display:none; align-items:center;
+                 justify-content:center; z-index:10; }
+  #visionneuse img { max-width:100%; max-height:100%; object-fit:contain; }
+  #visionneuse span { position:absolute; top:14px; right:16px; color:#fff; font-size:15px;
+                      border:2px solid #fff; border-radius:8px; padding:6px 10px; }
   h1 { font-size:20px; margin:12px 0 4px; word-break:break-word; }
   .lieu { color:var(--doux); font-size:14px; }
   .prix { display:flex; gap:12px; margin:14px 0; }
@@ -74,7 +82,7 @@
 </head>
 <body>
 <header><b>SD Radar</b>
-  <nav><button id="n-trier" class="on">À trier</button><button id="n-gardees">Gardées</button><a href="japon.html" style="color:var(--texte);border:2px solid var(--ligne);border-radius:8px;padding:6px 10px;text-decoration:none;font-size:14px">¥</a>
+  <nav><button id="n-trier" class="on">À trier</button><button id="n-gardees">Gardées</button><button id="n-passees">Passées</button><a href="japon.html" style="color:var(--texte);border:2px solid var(--ligne);border-radius:8px;padding:6px 10px;text-decoration:none;font-size:14px">¥</a>
   <select id="f-niveau"><option value="">Tous</option><option value="solide">Solides</option></select></nav>
   <span id="reste"></span></header>
 <main id="scene"></main>
@@ -84,6 +92,7 @@
   <button id="b-garder" class="g">✓ Garder</button>
 </footer>
 <div id="toast"></div>
+<div id="visionneuse"><img alt="" referrerpolicy="no-referrer"><span>✕ Fermer</span></div>
 <script>
 // --- Accès aux données : serveur local (/api) ou Supabase (lien de configuration du téléphone)
 const CLE_CFG = 'sdradar_cfg';
@@ -156,6 +165,13 @@ const api = {
     return Object.entries(etat.swipes).filter(([, s]) => s.decision === 'garder')
       .map(([url, s]) => ({ url, statut: s.statut || 'a_contacter', le: s.le, ...(s.carte || {}) }))
       .sort((a, b) => b.le.localeCompare(a.le));
+  },
+  async passees() {
+    if (!CFG) return (await fetch('/api/passees')).json();
+    const titres = Object.fromEntries(etat.cartes.map(c => [c.url, c]));
+    return Object.entries(etat.swipes).filter(([, s]) => s.decision !== 'garder')
+      .map(([url, s]) => ({ url, decision: s.decision, motif: s.motif, le: s.le, ...(titres[url] || {}), ...(s.carte || {}) }))
+      .sort((a, b) => b.le.localeCompare(a.le)).slice(0, 150);
   },
   async swipe(url, decision, motif, carte) {
     if (!CFG) return fetch('/api/swipe', { method: 'POST', body: JSON.stringify({ url, decision, motif, carte }) });
@@ -255,7 +271,7 @@ async function chargerDistant() {
 function filtrer() {
   const n = document.getElementById('f-niveau').value;
   file = toutes.filter(c => !n || c.niveau === n);
-  if (vue === 'trier') afficher(); else gardees();
+  if (vue === 'trier') afficher(); else if (vue === 'passees') passees(); else gardees();
 }
 async function gardees() {
   const liste = await api.gardees();
@@ -275,11 +291,34 @@ function onglet(v) {
   vue = v;
   document.getElementById('n-trier').classList.toggle('on', v === 'trier');
   document.getElementById('n-gardees').classList.toggle('on', v === 'gardees');
+  document.getElementById('n-passees').classList.toggle('on', v === 'passees');
   document.querySelector('footer').style.display = v === 'trier' ? 'flex' : 'none';
   filtrer();
 }
 document.getElementById('n-trier').onclick = () => onglet('trier');
 document.getElementById('n-gardees').onclick = () => onglet('gardees');
+document.getElementById('n-passees').onclick = () => onglet('passees');
+const MOTIFS = { trop_cher: 'trop cher', pas_interesse: 'pas intéressé', etat: 'état', arnaque: 'arnaque' };
+async function passees() {
+  const liste = await api.passees();
+  reste.textContent = liste.length + ' passées';
+  document.querySelector('footer').style.display = 'none';
+  scene.innerHTML = '<div class="liste"><p class="infos">Les plus récentes d’abord. « Remettre » la renvoie dans les cartes à trier.</p>' + (liste.map(c => `
+    <div class="gardee">${c.photo ? `<img src="${esc(grandePhoto(c.photo))}" referrerpolicy="no-referrer" alt="">` : ''}
+      <div><b>${esc(c.titre || c.url)}</b>
+        ${c.prix ? eur(c.prix) : ''} · ${c.decision === 'plus_tard' ? 'plus tard' : 'passée'}${c.motif ? ' (' + esc(MOTIFS[c.motif] || c.motif) + ')' : ''}
+        · ${new Date(c.le).toLocaleString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}<br>
+        <button class="remettre" data-url="${esc(c.url)}" style="margin-top:6px;background:#fff;color:#101114;border:2px solid #fff;border-radius:8px;padding:6px 10px;font:inherit;font-size:14px;font-weight:700">↩ Remettre à trier</button>
+        <a href="${esc(c.url)}" target="_blank" rel="noopener">Ouvrir</a></div></div>`).join('')
+    || '<p class="vide">Aucune carte passée.</p>') + '</div>';
+  scene.querySelectorAll('.remettre').forEach(b => b.onclick = async () => {
+    b.disabled = true; b.textContent = 'Remise…';
+    await api.annuler(b.dataset.url);
+    if (CFG) majFile(); else { toutes = await api.cartes(); }
+    b.closest('.gardee').remove();
+    reste.textContent = scene.querySelectorAll('.gardee').length + ' passées';
+  });
+}
 document.getElementById('f-niveau').onchange = filtrer;
 
 function afficher() {
@@ -305,7 +344,7 @@ function afficher() {
     <div class="etiquette" id="e-plus_tard">PLUS TARD</div>
     <span class="niveau ${esc(c.niveau)}">${NIVEAU[c.niveau] || ''}</span>
     <span class="source">${esc(c.source || '')}</span>
-    ${c.photo ? `<img class="photo" src="${esc(c.photo)}" referrerpolicy="no-referrer" alt="">` : ''}
+    ${c.photo ? `<div class="cadre-photo"><img class="photo" src="${esc(grandePhoto(c.photo))}" referrerpolicy="no-referrer" alt=""><button class="agrandir" data-photo="${esc(grandePhoto(c.photo))}">⤢ Agrandir</button></div>` : ''}
     <h1>${esc(c.titre)}</h1>
     <div class="lieu">${esc(c.lieu || '')} · ${esc(c.marque)} ${esc(c.modele)}</div>
     <div class="prix">
@@ -322,12 +361,18 @@ function afficher() {
     <a class="voir" href="${esc(c.url)}" target="_blank" rel="noopener">Ouvrir l’annonce</a>
   </div>`;
   brancherGeste(document.getElementById('carte'));
+  const b = document.querySelector('.agrandir');
+  if (b) b.onclick = () => { const v = document.getElementById('visionneuse');
+    v.querySelector('img').src = b.dataset.photo; v.style.display = 'flex'; };
 }
+document.getElementById('visionneuse').onclick = e => { e.currentTarget.style.display = 'none'; };
+// eBay donne des vignettes de 225 px : on demande la grande version (1 600 px) de la même photo
+function grandePhoto(u) { return String(u).replace(/\/s-l\d+\.(jpg|jpeg|png|webp)(\?.*)?$/i, '/s-l1600.$1'); }
 
 function brancherGeste(el) {
   let x0 = 0, y0 = 0, actif = false;
   el.addEventListener('pointerdown', e => {
-    if (e.target.closest('a')) return;
+    if (e.target.closest('a, button')) return;
     actif = true; x0 = e.clientX; y0 = e.clientY; el.classList.add('glisse');
     el.setPointerCapture(e.pointerId);
   });
