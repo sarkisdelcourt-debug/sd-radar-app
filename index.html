@@ -407,6 +407,7 @@ function afficher() {
     <p class="infos">${infos}</p>
     ${c.enchere ? `<p class="infos"><span><b>Enchère</b> · fin ${finEnchere(c.enchere.fin)} · mise actuelle ${eur(c.enchere.actuelle)}${c.enchere.nb != null ? ' (' + c.enchere.nb + ' mise' + (c.enchere.nb > 1 ? 's' : '') + ')' : ''}${c.enchere.plafond ? ' · <b>ne pas dépasser ' + eur(c.enchere.plafond) + '</b>' : ''}</span></p>` : ''}
     ${c.fourchette ? `<p class="infos"><span><b>Croisement des sites :</b> ${Object.entries(c.fourchette.sites).map(([s, v]) => esc(s) + ' ' + eur(v.med) + ' (' + v.n + ')').join(' · ')} → fourchette ${eur(c.fourchette.bas)} – ${eur(c.fourchette.haut)}</span></p>` : ''}
+    ${c.aussi_sur && c.aussi_sur.length ? `<p class="infos"><span><b>Aussi sur :</b> ${c.aussi_sur.map(x => `<a href="${esc(x.url)}" target="_blank" rel="noopener" style="color:var(--texte)">${esc(x.source)}${x.prix ? ' ' + eur(x.prix) : ''}</a>`).join(' · ')}</span></p>` : ''}
     ${c.revente ? `<p class="infos"><span><b>Revente conseillée : ${esc(c.revente.marche)}</b> — argus ${eur(c.revente.argus_med)} (${c.revente.n} annonces), marge prudente ${eur(c.revente.marge_prud)} après surcoût de transport</span></p>` : ''}
     ${alertes}
     <p></p>
