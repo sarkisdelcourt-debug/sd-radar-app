@@ -71,6 +71,8 @@
            justify-content:center; }
   footer button { flex:1; max-width:140px; padding:14px 0; font-size:16px; font-weight:700; border-radius:12px;
                   border:2px solid var(--texte); background:var(--rejeter); color:var(--texte); cursor:pointer; }
+  footer button.r { flex:0 0 56px; }
+  footer button:disabled { opacity:.35; }
   footer button.g { background:var(--garder); color:#101114; }
   .vide { text-align:center; color:var(--doux); }
   #toast { position:fixed; left:12px; right:12px; bottom:90px; background:#fff; color:#101114;
@@ -82,11 +84,12 @@
 </head>
 <body>
 <header><b>SD Radar</b>
-  <nav><button id="n-trier" class="on">À trier</button><button id="n-gardees">Gardées</button><button id="n-passees">Passées</button><a href="japon.html" style="color:var(--texte);border:2px solid var(--ligne);border-radius:8px;padding:6px 10px;text-decoration:none;font-size:14px">¥</a>
+  <nav><button id="n-trier" class="on">À trier</button><button id="n-gardees">Gardées</button><a href="japon.html" style="color:var(--texte);border:2px solid var(--ligne);border-radius:8px;padding:6px 10px;text-decoration:none;font-size:14px">¥</a>
   <select id="f-niveau"><option value="">Tous</option><option value="solide">Solides</option></select></nav>
   <span id="reste"></span></header>
 <main id="scene"></main>
 <footer>
+  <button id="b-retour" class="r" title="Revenir à la carte précédente">↶</button>
   <button id="b-rejeter">✕ Passer</button>
   <button id="b-plus_tard">★ Plus tard</button>
   <button id="b-garder" class="g">✓ Garder</button>
@@ -165,13 +168,6 @@ const api = {
     return Object.entries(etat.swipes).filter(([, s]) => s.decision === 'garder')
       .map(([url, s]) => ({ url, statut: s.statut || 'a_contacter', le: s.le, ...(s.carte || {}) }))
       .sort((a, b) => b.le.localeCompare(a.le));
-  },
-  async passees() {
-    if (!CFG) return (await fetch('/api/passees')).json();
-    const titres = Object.fromEntries(etat.cartes.map(c => [c.url, c]));
-    return Object.entries(etat.swipes).filter(([, s]) => s.decision !== 'garder')
-      .map(([url, s]) => ({ url, decision: s.decision, motif: s.motif, le: s.le, ...(titres[url] || {}), ...(s.carte || {}) }))
-      .sort((a, b) => b.le.localeCompare(a.le)).slice(0, 150);
   },
   async swipe(url, decision, motif, carte) {
     if (!CFG) return fetch('/api/swipe', { method: 'POST', body: JSON.stringify({ url, decision, motif, carte }) });
@@ -271,7 +267,7 @@ async function chargerDistant() {
 function filtrer() {
   const n = document.getElementById('f-niveau').value;
   file = toutes.filter(c => !n || c.niveau === n);
-  if (vue === 'trier') afficher(); else if (vue === 'passees') passees(); else gardees();
+  if (vue === 'trier') afficher(); else gardees();
 }
 async function gardees() {
   const liste = await api.gardees();
@@ -291,36 +287,11 @@ function onglet(v) {
   vue = v;
   document.getElementById('n-trier').classList.toggle('on', v === 'trier');
   document.getElementById('n-gardees').classList.toggle('on', v === 'gardees');
-  document.getElementById('n-passees').classList.toggle('on', v === 'passees');
   document.querySelector('footer').style.display = v === 'trier' ? 'flex' : 'none';
   filtrer();
 }
 document.getElementById('n-trier').onclick = () => onglet('trier');
 document.getElementById('n-gardees').onclick = () => onglet('gardees');
-document.getElementById('n-passees').onclick = () => onglet('passees');
-const MOTIFS = { trop_cher: 'trop cher', pas_interesse: 'pas intéressé', etat: 'état', arnaque: 'arnaque' };
-async function passees() {
-  const liste = await api.passees();
-  reste.textContent = liste.length + ' passées';
-  document.querySelector('footer').style.display = 'none';
-  scene.innerHTML = '<div class="liste"><p class="infos">Les plus récentes d’abord. « Remettre » la renvoie dans les cartes à trier.</p>' + (liste.map(c => `
-    <div class="gardee">${c.photo ? `<img src="${esc(grandePhoto(c.photo))}" referrerpolicy="no-referrer" alt="">` : ''}
-      <div><b>${esc(c.titre || c.url)}</b>
-        ${c.prix ? eur(c.prix) : ''} · ${c.decision === 'plus_tard' ? 'plus tard' : 'passée'}${c.motif ? ' (' + esc(MOTIFS[c.motif] || c.motif) + ')' : ''}
-        · ${new Date(c.le).toLocaleString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}<br>
-        <button class="remettre" data-url="${esc(c.url)}" style="margin-top:6px;background:#fff;color:#101114;border:2px solid #fff;border-radius:8px;padding:6px 10px;font:inherit;font-size:14px;font-weight:700">↩ Remettre à trier</button>
-        <a href="${esc(c.url)}" target="_blank" rel="noopener">Ouvrir</a></div></div>`).join('')
-    || '<p class="vide">Aucune carte passée.</p>') + '</div>';
-  scene.querySelectorAll('.remettre').forEach(b => b.onclick = async () => {
-    b.disabled = true; b.textContent = 'Remise…';
-    await api.annuler(b.dataset.url);
-    if (CFG) majFile(); else { toutes = await api.cartes(); }
-    b.closest('.gardee').remove();
-    reste.textContent = scene.querySelectorAll('.gardee').length + ' passées';
-  });
-}
-document.getElementById('f-niveau').onchange = filtrer;
-
 function afficher() {
   courante = file[0] || null;
   reste.textContent = file.length ? file.length + ' à trier' : '';
@@ -399,6 +370,25 @@ async function envoyer(url, decision, motif, carte) {
   await api.swipe(url, decision, motif, carte);
 }
 
+// --- Retour en arrière : les 30 derniers swipes, du plus récent au plus ancien
+const CLE_PILE = 'sdradar_pile';
+let pile = [];
+try { pile = JSON.parse(localStorage.getItem(CLE_PILE) || '[]'); } catch (e) { pile = []; }
+function sauverPile() { try { localStorage.setItem(CLE_PILE, JSON.stringify(pile.slice(-30))); } catch (e) {} majRetour(); }
+function majRetour() { const b = document.getElementById('b-retour'); if (b) b.disabled = !pile.length; }
+function empiler(c) { pile.push(c); sauverPile(); }
+async function retour() {
+  const c = pile.pop(); sauverPile();
+  if (!c) return;
+  toast.style.display = 'none';
+  await api.annuler(c.url);
+  toutes = [c, ...toutes.filter(x => x.url !== c.url)];
+  file = [c, ...file.filter(x => x.url !== c.url)];
+  courante = null; afficher();
+}
+document.getElementById('b-retour').onclick = retour;
+majRetour();
+
 function decider(decision) {
   if (!courante) return;
   const c = courante, el = document.getElementById('carte');
@@ -407,6 +397,7 @@ function decider(decision) {
   const snap = { titre: c.titre, prix: c.prix, argus_med: c.argus_med, marge_prud: c.marge_prud,
     photo: c.photo, lieu: c.lieu, source: c.source, marque: c.marque, modele: c.modele };
   envoyer(c.url, decision, null, snap);
+  empiler(c);
   dernierSwipe = c; file.shift(); toutes = toutes.filter(x => x.url !== c.url);
   setTimeout(afficher, 180);
   proposerMotif(c, decision);
@@ -422,6 +413,7 @@ function proposerMotif(c, decision) {
   toast.querySelectorAll('button').forEach(b => b.onclick = async () => {
     if (b.dataset.m === 'annuler') {
       await api.annuler(c.url);
+      pile = pile.filter(x => x.url !== c.url); sauverPile();
       file.unshift(c); afficher();
     } else await envoyer(c.url, 'rejeter', b.dataset.m);
     toast.style.display = 'none';
