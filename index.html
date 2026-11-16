@@ -87,15 +87,21 @@
 <script>
 // --- Accès aux données : serveur local (/api) ou Supabase (lien de configuration du téléphone)
 const CLE_CFG = 'sdradar_cfg';
-(function lireLien() {
-  const m = location.hash.match(/cfg=([\w-]+=*)/);
-  if (!m) return;
+function enregistrerLien(texte) {
+  const m = String(texte).match(/cfg=([\w-]+=*)/);
+  if (!m) return false;
   try {
     const cfg = JSON.parse(decodeURIComponent(escape(atob(m[1].replace(/-/g, '+').replace(/_/g, '/')))));
+    if (!cfg.u || !cfg.k || !cfg.t) return false;
     localStorage.setItem(CLE_CFG, JSON.stringify(cfg));
-  } catch (e) { /* lien illisible : on garde l'ancienne config */ }
+    return true;
+  } catch (e) { return false; }
+}
+if (location.hash.includes('cfg=')) {
+  enregistrerLien(location.hash);
   history.replaceState(null, '', location.pathname);
-})();
+}
+const SERVEUR_LOCAL = /^(localhost|127\.|192\.168\.|10\.)/.test(location.hostname);
 let CFG = null;
 try { CFG = JSON.parse(localStorage.getItem(CLE_CFG) || 'null'); } catch (e) { CFG = null; }
 async function rpc(nom, args) {
@@ -152,7 +158,25 @@ const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;
 let vue = 'trier', toutes = [], diag = 'mode serveur local';
 const STATUTS = { a_contacter: 'À contacter', contacte: 'Contacté', negociation: 'En négociation',
                   achete: 'Acheté', abandonne: 'Abandonné' };
+function ecranConfig() {
+  reste.textContent = '';
+  document.querySelector('footer').style.display = 'none';
+  scene.innerHTML = `<div class="liste"><h1>Configurer le téléphone</h1>
+    <p class="infos">Cette appli n'a pas encore ton accès privé (une appli ajoutée à l'écran d'accueil ne
+    partage pas la configuration du navigateur). Scanne le QR affiché sur le PC
+    (http://localhost:8765/telephone), fais un appui long sur le lien proposé, choisis « Copier le
+    lien », puis colle-le ici.</p>
+    <textarea id="lien" rows="4" style="width:100%;background:#14161a;color:#fff;border:2px solid #3a3e48;
+      border-radius:8px;padding:8px" placeholder="Colle le lien ici"></textarea>
+    <p><a class="voir" href="#" id="ok">Enregistrer</a></p><p class="infos" id="msg"></p></div>`;
+  document.getElementById('ok').onclick = e => {
+    e.preventDefault();
+    if (enregistrerLien(document.getElementById('lien').value)) location.reload();
+    else document.getElementById('msg').textContent = 'Lien non reconnu : il doit contenir « cfg= ».';
+  };
+}
 async function charger() {
+  if (!CFG && !SERVEUR_LOCAL) { ecranConfig(); return; }
   try { toutes = await api.cartes(); } catch (e) { scene.innerHTML = '<p class="vide">Connexion impossible (' + esc(e.message) + ').</p>'; return; }
   filtrer();
 }
