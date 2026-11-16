@@ -35,6 +35,11 @@
   #visionneuse { position:fixed; inset:0; background:#000; display:none; align-items:center;
                  justify-content:center; z-index:10; }
   #visionneuse img { max-width:100%; max-height:100%; object-fit:contain; }
+  #visionneuse .nav { position:absolute; top:50%; transform:translateY(-50%); width:56px; height:72px;
+                      background:rgba(0,0,0,.6); color:#fff; border:2px solid #fff; border-radius:10px;
+                      font-size:30px; }
+  #v-prec { left:8px; } #v-suiv { right:8px; }
+  #v-compte { position:absolute; top:14px; left:16px; color:#fff; font-size:15px; font-weight:700; }
   #visionneuse span { position:absolute; top:14px; right:16px; color:#fff; font-size:15px;
                       border:2px solid #fff; border-radius:8px; padding:6px 10px; }
   h1 { font-size:20px; margin:12px 0 4px; word-break:break-word; }
@@ -95,7 +100,8 @@
   <button id="b-garder" class="g">✓ Garder</button>
 </footer>
 <div id="toast"></div>
-<div id="visionneuse"><img alt="" referrerpolicy="no-referrer"><span>✕ Fermer</span></div>
+<div id="visionneuse"><img alt="" referrerpolicy="no-referrer"><span>✕ Fermer</span><b id="v-compte"></b>
+  <button class="nav" id="v-prec">‹</button><button class="nav" id="v-suiv">›</button></div>
 <script>
 // --- Accès aux données : serveur local (/api) ou Supabase (lien de configuration du téléphone)
 const CLE_CFG = 'sdradar_cfg';
@@ -315,7 +321,7 @@ function afficher() {
     <div class="etiquette" id="e-plus_tard">PLUS TARD</div>
     <span class="niveau ${esc(c.niveau)}">${NIVEAU[c.niveau] || ''}</span>
     <span class="source">${esc(c.source || '')}</span>
-    ${c.photo ? `<div class="cadre-photo"><img class="photo" src="${esc(grandePhoto(c.photo))}" referrerpolicy="no-referrer" alt=""><button class="agrandir" data-photo="${esc(grandePhoto(c.photo))}">⤢ Agrandir</button></div>` : ''}
+    ${c.photo ? `<div class="cadre-photo"><img class="photo" src="${esc(grandePhoto(c.photo))}" referrerpolicy="no-referrer" alt=""><button class="agrandir">⤢ ${(c.photos || []).length > 1 ? c.photos.length + ' photos' : 'Agrandir'}</button></div>` : ''}
     <h1>${esc(c.titre)}</h1>
     <div class="lieu">${esc(c.lieu || '')} · ${esc(c.marque)} ${esc(c.modele)}</div>
     <div class="prix">
@@ -333,10 +339,29 @@ function afficher() {
   </div>`;
   brancherGeste(document.getElementById('carte'));
   const b = document.querySelector('.agrandir');
-  if (b) b.onclick = () => { const v = document.getElementById('visionneuse');
-    v.querySelector('img').src = b.dataset.photo; v.style.display = 'flex'; };
+  if (b) b.onclick = () => ouvrirPhotos((c.photos && c.photos.length ? c.photos : [c.photo]).map(grandePhoto));
 }
-document.getElementById('visionneuse').onclick = e => { e.currentTarget.style.display = 'none'; };
+// --- Visionneuse : toutes les photos de l'annonce, ‹ › ou glisser pour passer de l'une à l'autre
+let vPhotos = [], vIndex = 0;
+const V = document.getElementById('visionneuse');
+function montrerPhoto() {
+  V.querySelector('img').src = vPhotos[vIndex];
+  document.getElementById('v-compte').textContent = vPhotos.length > 1 ? (vIndex + 1) + ' / ' + vPhotos.length : '';
+  document.getElementById('v-prec').style.display = document.getElementById('v-suiv').style.display =
+    vPhotos.length > 1 ? 'block' : 'none';
+}
+function ouvrirPhotos(liste) { vPhotos = liste; vIndex = 0; montrerPhoto(); V.style.display = 'flex'; }
+function decaler(n) { vIndex = (vIndex + n + vPhotos.length) % vPhotos.length; montrerPhoto(); }
+document.getElementById('v-prec').onclick = e => { e.stopPropagation(); decaler(-1); };
+document.getElementById('v-suiv').onclick = e => { e.stopPropagation(); decaler(1); };
+let vx = null;
+V.addEventListener('pointerdown', e => { vx = e.clientX; });
+V.addEventListener('pointerup', e => {
+  if (e.target.closest('button')) return;
+  const d = vx === null ? 0 : e.clientX - vx; vx = null;
+  if (Math.abs(d) > 50 && vPhotos.length > 1) decaler(d < 0 ? 1 : -1);  // glisser : photo suivante
+  else V.style.display = 'none';  // simple toucher : fermer
+});
 // eBay donne des vignettes de 225 px : on demande la grande version (1 600 px) de la même photo
 function grandePhoto(u) { return String(u).replace(/\/s-l\d+\.(jpg|jpeg|png|webp)(\?.*)?$/i, '/s-l1600.$1'); }
 
