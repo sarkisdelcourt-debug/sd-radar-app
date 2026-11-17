@@ -362,7 +362,7 @@ async function chasseur() {
       ${r.photos && r.photos.length ? `<img src="${esc(grandePhoto(r.photos[0]))}" referrerpolicy="no-referrer" alt="" data-f="${i}" data-r="${j}" style="cursor:pointer">` : ''}
       <div><b>${esc(r.titre)}</b>
         ${r.prix != null ? eur(r.prix) : 'prix ?'}${r.prix_origine ? ' <small>(' + esc(r.prix_origine) + ')</small>' : ''} · ${esc(r.source)}${r.lieu ? ' · ' + esc(r.lieu) : ''}
-        ${r.dans_budget ? '' : ' · <b style="text-decoration:underline">hors budget</b>'}
+        ${r.nature === 'manche' ? ' · <b style="text-decoration:underline">MANCHE SEUL</b>' : r.dans_budget ? '' : ' · <b style="text-decoration:underline">hors budget</b>'}
         ${r.enchere && r.enchere.fin ? '<br>Enchère, fin ' + finEnchere(r.enchere.fin) : ''}<br>
         <a href="${esc(r.url)}" target="_blank" rel="noopener">Ouvrir l’annonce</a></div></div>`).join('')
       || '<p class="infos">Rien pour l’instant : la recherche est relancée à chaque mise à jour.</p>'}`).join('')
