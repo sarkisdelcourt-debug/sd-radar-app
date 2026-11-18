@@ -8,100 +8,147 @@
 <meta name="theme-color" content="#101114">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <style>
-  :root { --fond:#101114; --carte:#1c1e24; --texte:#f4f5f7; --doux:#b6bac4; --ligne:#3a3e48;
-          --garder:#ffffff; --rejeter:#2a2d35; --accent:#ffd166; }
+  :root { --fond:#101114; --carte:#1c1e24; --creux:#14161a; --texte:#f4f5f7; --doux:#b6bac4; --ligne:#3a3e48;
+          --sombre:#2a2d35; --accent:#ffd166; }
   * { box-sizing:border-box; }
-  body { margin:0; background:var(--fond); color:var(--texte); font:16px/1.35 system-ui,sans-serif;
-         min-height:100dvh; display:flex; flex-direction:column; overscroll-behavior:none; }
-  header { padding:10px 12px; display:flex; flex-wrap:wrap; gap:8px; justify-content:space-between; align-items:center;
-           border-bottom:1px solid var(--ligne); }
+  html, body { height:100%; }
+  body { margin:0; background:var(--fond); color:var(--texte); font:16px/1.35 system-ui,-apple-system,"Segoe UI",sans-serif;
+         height:100dvh; display:flex; flex-direction:column; overflow:hidden; overscroll-behavior:none; }
+  button { font:inherit; cursor:pointer; }
+  header { padding:calc(8px + env(safe-area-inset-top)) 16px 6px; display:flex; align-items:center; justify-content:space-between; gap:10px; flex:none; }
   header b { font-size:18px; letter-spacing:.5px; }
-  #reste { color:var(--doux); font-size:14px; }
-  main { flex:1; position:relative; padding:16px; display:flex; align-items:center; justify-content:center; }
-  .carte { width:100%; max-width:440px; background:var(--carte); border:2px solid var(--ligne);
-           border-radius:16px; padding:18px; touch-action:pan-y; user-select:none; position:relative;
-           transition:transform .2s; will-change:transform; }
-  .carte.glisse { transition:none; }
-  .niveau { display:inline-block; font-weight:700; font-size:13px; padding:3px 10px; border-radius:6px;
-            letter-spacing:.5px; }
-  .niveau.solide { background:#fff; color:#101114; }
-  .niveau.a_voir { background:transparent; color:var(--texte); border:2px dashed var(--doux); }
-  .source { float:right; color:var(--doux); font-size:13px; }
-  .cadre-photo { position:relative; margin:10px 0 0; }
-  .photo { display:block; width:100%; height:auto; max-height:45vh; object-fit:contain; border-radius:10px;
-           background:#000; pointer-events:none; }
-  .agrandir { position:absolute; right:8px; bottom:8px; background:rgba(0,0,0,.75); color:#fff;
-              border:2px solid #fff; border-radius:8px; padding:6px 10px; font:inherit; font-size:14px; }
-  #visionneuse { position:fixed; inset:0; background:#000; display:none; align-items:center;
-                 justify-content:center; z-index:10; }
-  #visionneuse img { max-width:100%; max-height:100%; object-fit:contain; }
-  #visionneuse .nav { position:absolute; top:50%; transform:translateY(-50%); width:56px; height:72px;
-                      background:rgba(0,0,0,.6); color:#fff; border:2px solid #fff; border-radius:10px;
-                      font-size:30px; }
-  #v-prec { left:8px; } #v-suiv { right:8px; }
-  #v-compte { position:absolute; top:14px; left:16px; color:#fff; font-size:15px; font-weight:700; }
-  #visionneuse span { position:absolute; top:14px; right:16px; color:#fff; font-size:15px;
-                      border:2px solid #fff; border-radius:8px; padding:6px 10px; }
-  h1 { font-size:20px; margin:12px 0 4px; word-break:break-word; }
-  .lieu { color:var(--doux); font-size:14px; }
-  .prix { display:flex; gap:12px; margin:14px 0; }
-  .prix div { flex:1; background:#14161a; border-radius:10px; padding:10px; }
-  .prix small { display:block; color:var(--doux); font-size:12px; }
-  .prix strong { font-size:22px; }
-  .marge strong { color:var(--accent); }
-  .infos { font-size:14px; color:var(--doux); margin:0 0 12px; }
-  .infos span { display:block; margin:2px 0; }
-  .alerte { color:#101114; background:var(--accent); border-radius:6px; padding:3px 8px;
-            font-size:13px; font-weight:600; display:inline-block; margin:2px 4px 2px 0; }
-  a.voir { display:block; text-align:center; padding:12px; border:2px solid var(--texte);
-           border-radius:10px; color:var(--texte); text-decoration:none; font-weight:600; }
-  .etiquette { position:absolute; top:18px; padding:4px 12px; border:3px solid; border-radius:8px;
-               font-weight:800; font-size:20px; opacity:0; transform:rotate(-8deg); background:var(--carte); }
+  #reste { color:var(--doux); font-size:14px; margin-left:10px; }
+  #b-menu { width:44px; height:44px; border-radius:12px; border:2px solid var(--ligne); background:transparent; color:var(--texte); font-size:20px; font-weight:700; }
+  #menu { position:fixed; right:16px; top:64px; background:var(--carte); border:2px solid var(--ligne); border-radius:12px; padding:6px; display:none; flex-direction:column; z-index:20; min-width:200px; }
+  #menu a, #menu button { display:block; width:100%; text-align:left; padding:12px; border:0; background:transparent; color:var(--texte); text-decoration:none; font-size:15px; border-radius:8px; }
+  #menu a:hover, #menu button:hover { background:var(--creux); }
+  .puces { display:flex; gap:8px; padding:0 16px 8px; overflow-x:auto; scrollbar-width:none; flex:none; }
+  .puces::-webkit-scrollbar { display:none; }
+  .puce { height:36px; padding:0 14px; border-radius:18px; border:2px solid var(--ligne); background:transparent; color:var(--texte); font-size:14px; white-space:nowrap; flex:none; }
+  .puce[aria-pressed="true"] { background:#fff; color:#101114; border-color:#fff; font-weight:700; }
+  .puce.tiret { border-style:dashed; border-color:var(--doux); }
+  main { flex:1; position:relative; min-height:0; padding:0 16px; }
+  main.liste-vue { overflow-y:auto; padding-bottom:16px; }
+  /* --- la pile : carte derrière, carte devant --- */
+  .carte { position:absolute; left:16px; right:16px; top:4px; bottom:16px; background:var(--carte); border:2px solid var(--ligne);
+           border-radius:20px; overflow:hidden; display:flex; flex-direction:column; will-change:transform; touch-action:pan-y; }
+  .carte.derriere { transform:scale(.96) translateY(14px); border-color:var(--sombre); background:#16181d; }
+  .carte.derriere > * { visibility:hidden; }
+  .carte.devant { transition:transform .22s ease-out; z-index:2; }
+  .carte.devant.glisse { transition:none; }
+  .photo-zone { position:relative; flex:none; height:min(34vh, 270px); background:#0b0c0f; display:flex; align-items:center; justify-content:center; touch-action:none; user-select:none; }
+  .photo-zone img { width:100%; height:100%; object-fit:contain; pointer-events:none; }
+  .photo-zone .vide-photo { color:#6f7380; font-size:13px; }
+  .pastille { position:absolute; top:12px; font-size:12px; font-weight:800; padding:4px 10px; border-radius:6px; letter-spacing:.5px; }
+  .pastille.niveau { left:12px; background:#fff; color:#101114; }
+  .pastille.niveau.a_voir { background:transparent; color:#fff; border:2px dashed #fff; }
+  .pastille.source { right:12px; background:rgba(16,17,20,.85); color:var(--texte); font-weight:500; letter-spacing:0; }
+  .points { position:absolute; bottom:10px; left:0; right:0; display:flex; justify-content:center; gap:6px; }
+  .points span { width:8px; height:8px; border-radius:4px; background:#4a4e58; }
+  .points span.on { background:#fff; }
+  .agrandir { position:absolute; right:10px; bottom:8px; background:rgba(0,0,0,.75); color:#fff; border:2px solid #fff; border-radius:8px; padding:6px 10px; font-size:13px; }
+  .corps { flex:1; min-height:0; overflow-y:auto; padding:12px 16px 14px; display:flex; flex-direction:column; gap:10px; }
+  .verdict { display:flex; align-items:baseline; justify-content:space-between; gap:12px; }
+  .verdict .gros { font-size:34px; font-weight:800; line-height:1; color:var(--accent); }
+  .verdict .gros.neutre { color:var(--texte); }
+  .verdict .detail { font-size:14px; color:var(--doux); text-align:right; }
+  .verdict .detail b { color:var(--texte); }
+  .jauge { position:relative; height:22px; }
+  .jauge .rail { position:absolute; left:0; right:0; top:9px; height:4px; background:var(--sombre); border-radius:2px; }
+  .jauge .bande { position:absolute; top:7px; height:8px; background:#6f7380; border-radius:4px; }
+  .jauge .mediane { position:absolute; top:2px; width:2px; height:18px; background:var(--texte); }
+  .jauge .point { position:absolute; top:0; width:22px; height:22px; margin-left:-11px; border-radius:11px; background:var(--accent); border:3px solid #101114; }
+  .legende { display:flex; justify-content:space-between; gap:8px; font-size:12px; color:var(--doux); flex-wrap:wrap; }
+  .legende span { white-space:nowrap; }
+  .legende b { color:var(--texte); }
+  .legende b.prix { color:var(--accent); }
+  h1 { font-size:18px; line-height:1.25; margin:0; word-break:break-word; user-select:text; }
+  .sous { font-size:14px; color:var(--doux); }
+  .etiquettes { display:flex; gap:6px; flex-wrap:wrap; }
+  .etiquettes span { font-size:12px; padding:4px 8px; border-radius:6px; border:2px solid var(--ligne); }
+  .etiquettes span.fort { background:var(--accent); color:#101114; border-color:var(--accent); font-weight:700; }
+  .etiquettes span.alerte { background:#fff; color:#101114; border-color:#fff; font-weight:700; }
+  .details-btn { display:flex; justify-content:space-between; align-items:center; width:100%; min-height:44px; padding:0 12px; border-radius:10px; border:2px solid var(--ligne); background:transparent; color:var(--texte); font-size:14px; font-weight:600; text-align:left; }
+  .details { display:none; flex-direction:column; gap:6px; font-size:14px; color:var(--doux); }
+  .details.ouvert { display:flex; }
+  .details b { color:var(--texte); }
+  a.voir { display:block; text-align:center; padding:12px; border:2px solid var(--texte); border-radius:10px; color:var(--texte); text-decoration:none; font-weight:600; }
+  .etiquette { position:absolute; top:18px; padding:4px 12px; border:3px solid; border-radius:8px; font-weight:800; font-size:20px; opacity:0; transform:rotate(-8deg); background:var(--carte); z-index:3; pointer-events:none; }
   #e-garder { right:16px; color:#fff; border-color:#fff; }
   #e-rejeter { left:16px; color:var(--doux); border-style:dashed; border-color:var(--doux); }
-  #e-plus_tard { left:50%; margin-left:-40px; color:var(--accent); border-color:var(--accent); }
-  nav { display:flex; flex-wrap:wrap; gap:6px; align-items:center; }
-  nav button, nav select { background:transparent; color:var(--texte); border:2px solid var(--ligne);
-           border-radius:8px; padding:6px 10px; font:inherit; font-size:14px; }
-  nav button.on { background:#fff; color:#101114; border-color:#fff; font-weight:700; }
-  .liste { width:100%; max-width:520px; align-self:flex-start; }
-  .gardee { background:var(--carte); border:2px solid var(--ligne); border-radius:12px; padding:12px;
-            margin-bottom:10px; display:flex; gap:10px; }
-  .gardee img { width:72px; height:72px; object-fit:cover; border-radius:8px; flex:none; }
-  .gardee b { display:block; font-size:15px; word-break:break-word; }
-  .gardee select { margin-top:6px; background:#14161a; color:var(--texte); border:2px solid var(--ligne);
-                   border-radius:8px; padding:4px 6px; font:inherit; font-size:14px; }
-  .gardee a { color:var(--texte); font-size:14px; }
-  footer { display:flex; gap:12px; padding:12px 16px calc(16px + env(safe-area-inset-bottom));
-           justify-content:center; }
-  footer button { flex:1; max-width:140px; padding:14px 0; font-size:16px; font-weight:700; border-radius:12px;
-                  border:2px solid var(--texte); background:var(--rejeter); color:var(--texte); cursor:pointer; }
-  footer button.r { flex:0 0 56px; }
+  #e-plus_tard { left:50%; margin-left:-48px; color:var(--accent); border-color:var(--accent); }
+  .vide { text-align:center; color:var(--doux); padding:40px 16px; }
+  /* --- actions et navigation --- */
+  footer { display:flex; align-items:center; justify-content:center; gap:14px; padding:10px 16px 8px; flex:none; }
+  footer button { border-radius:50%; font-weight:800; display:flex; align-items:center; justify-content:center; }
+  #b-retour { width:48px; height:48px; border:2px solid var(--ligne); background:transparent; color:var(--doux); font-size:20px; }
+  #b-rejeter { width:68px; height:68px; border:3px dashed var(--doux); background:var(--sombre); color:var(--texte); font-size:15px; }
+  #b-plus_tard { width:56px; height:56px; border:2px solid var(--accent); background:transparent; color:var(--accent); font-size:12px; }
+  #b-garder { width:68px; height:68px; border:3px solid #fff; background:#fff; color:#101114; font-size:15px; }
   footer button:disabled { opacity:.35; }
-  footer button.g { background:var(--garder); color:#101114; }
-  .vide { text-align:center; color:var(--doux); }
-  #toast { position:fixed; left:12px; right:12px; bottom:90px; background:#fff; color:#101114;
-           border-radius:12px; padding:10px; display:none; gap:8px; flex-wrap:wrap; align-items:center;
-           font-size:14px; font-weight:600; }
-  #toast button { padding:8px 10px; border-radius:8px; border:2px solid #101114; background:#fff;
-                  font-weight:700; }
+  nav.bas { display:flex; justify-content:space-around; align-items:center; padding:4px 8px calc(10px + env(safe-area-inset-bottom)); border-top:1px solid var(--sombre); flex:none; }
+  nav.bas button { background:transparent; border:0; color:var(--doux); font-size:13px; font-weight:700; padding:10px 12px; border-bottom:3px solid transparent; }
+  nav.bas button[aria-pressed="true"] { color:#fff; border-bottom-color:#fff; }
+  /* --- listes (chasseur, prises, argus) --- */
+  .liste { width:100%; max-width:560px; margin:0 auto; display:flex; flex-direction:column; gap:10px; }
+  .bloc { background:var(--carte); border:2px solid var(--ligne); border-radius:16px; padding:14px; display:flex; flex-direction:column; gap:10px; }
+  .bloc h2 { margin:0; font-size:17px; line-height:1.2; }
+  .ligne { display:flex; gap:10px; align-items:center; padding:8px; border-radius:10px; background:var(--creux); text-decoration:none; color:var(--texte); }
+  .ligne.manche { border:2px dashed var(--ligne); }
+  .ligne img, .ligne .vignette { width:56px; height:56px; border-radius:8px; object-fit:cover; background:#0b0c0f; flex:none; }
+  .ligne .txt { flex:1; min-width:0; display:flex; flex-direction:column; gap:2px; }
+  .ligne b { font-size:14px; line-height:1.2; word-break:break-word; }
+  .ligne small { font-size:13px; color:var(--doux); }
+  .ligne .ratio { font-size:12px; font-weight:800; color:var(--accent); flex:none; }
+  .plus { min-height:40px; border-radius:10px; border:2px solid var(--ligne); background:transparent; color:var(--texte); font-size:14px; font-weight:600; }
+  select, input { background:var(--creux); color:var(--texte); border:2px solid var(--ligne); border-radius:8px; padding:8px; font:inherit; font-size:14px; }
+  /* --- toast, feuille des motifs, visionneuse --- */
+  #toast { position:fixed; left:16px; right:16px; bottom:150px; background:#fff; color:#101114; border-radius:12px; padding:0 6px 0 14px; display:none; justify-content:space-between; align-items:center; min-height:44px; font-size:14px; font-weight:700; z-index:15; }
+  #toast button { height:34px; padding:0 12px; border-radius:8px; border:2px solid #101114; background:#fff; color:#101114; font-weight:800; font-size:13px; }
+  #motifs { position:fixed; left:0; right:0; bottom:0; background:var(--carte); border-top:2px solid var(--ligne); border-radius:16px 16px 0 0; padding:16px 16px calc(16px + env(safe-area-inset-bottom)); display:none; flex-direction:column; gap:10px; z-index:16; }
+  #motifs p { margin:0; font-weight:700; }
+  #motifs .choix { display:flex; gap:8px; flex-wrap:wrap; }
+  #motifs .choix button { min-height:44px; padding:0 14px; border-radius:10px; border:2px solid var(--ligne); background:transparent; color:var(--texte); font-size:14px; font-weight:600; }
+  #visionneuse { position:fixed; inset:0; background:#000; display:none; align-items:center; justify-content:center; z-index:30; }
+  #visionneuse img { max-width:100%; max-height:100%; object-fit:contain; }
+  #visionneuse .nav { position:absolute; top:50%; transform:translateY(-50%); width:56px; height:72px; background:rgba(0,0,0,.6); color:#fff; border:2px solid #fff; border-radius:10px; font-size:30px; }
+  #v-prec { left:8px; } #v-suiv { right:8px; }
+  #v-compte { position:absolute; top:14px; left:16px; color:#fff; font-size:15px; font-weight:700; }
+  #v-fermer { position:absolute; top:14px; right:16px; color:#fff; font-size:15px; border:2px solid #fff; border-radius:8px; padding:6px 10px; background:transparent; }
+  @media (prefers-reduced-motion: reduce) { .carte.devant { transition:none; } }
 </style>
 </head>
 <body>
-<header><b>SD Radar</b>
-  <nav><button id="n-trier" class="on">À trier</button><button id="n-encheres">Enchères</button><button id="n-chasseur">Chasseur</button><button id="n-argus">Argus</button><button id="n-gardees">Gardées</button><a href="japon.html" style="color:var(--texte);border:2px solid var(--ligne);border-radius:8px;padding:6px 10px;text-decoration:none;font-size:14px">¥</a>
-  <select id="f-niveau"><option value="">Tous</option><option value="solide">Solides</option></select></nav>
-  <span id="reste"></span></header>
+<header><div><b>SD Radar</b><span id="reste"></span></div>
+  <button id="b-menu" aria-label="Menu : argus, calcul Japon, réglages" aria-expanded="false">···</button></header>
+<div id="menu" role="menu">
+  <button id="m-argus" role="menuitem">Argus — rechercher un modèle</button>
+  <a href="japon.html" role="menuitem">¥ Calcul Japon</a>
+  <button id="m-config" role="menuitem">Réglages — lien du téléphone</button>
+</div>
+<div class="puces" id="puces">
+  <button class="puce" data-niveau="" aria-pressed="true">Tous</button>
+  <button class="puce" data-niveau="solide" aria-pressed="false">Solides</button>
+  <button class="puce tiret" data-niveau="a_voir" aria-pressed="false">À vérifier</button>
+  <button class="puce" id="p-encheres" aria-pressed="false">Enchères</button>
+</div>
 <main id="scene"></main>
-<footer>
-  <button id="b-retour" class="r" title="Revenir à la carte précédente">↶</button>
-  <button id="b-rejeter">✕ Passer</button>
-  <button id="b-plus_tard">★ Plus tard</button>
-  <button id="b-garder" class="g">✓ Garder</button>
+<footer id="actions">
+  <button id="b-retour" aria-label="Revenir à la carte précédente">↶</button>
+  <button id="b-rejeter" aria-label="Passer (appui long : dire pourquoi)">Passer</button>
+  <button id="b-plus_tard" aria-label="Plus tard">Plus tard</button>
+  <button id="b-garder" aria-label="Garder">Garder</button>
 </footer>
-<div id="toast"></div>
-<div id="visionneuse"><img alt="" referrerpolicy="no-referrer"><span>✕ Fermer</span><b id="v-compte"></b>
-  <button class="nav" id="v-prec">‹</button><button class="nav" id="v-suiv">›</button></div>
+<nav class="bas" aria-label="Onglets">
+  <button id="n-trier" aria-pressed="true">À trier</button>
+  <button id="n-chasseur" aria-pressed="false">Chasseur</button>
+  <button id="n-prises" aria-pressed="false">Mes prises</button>
+  <button id="n-argus" aria-pressed="false">Argus</button>
+</nav>
+<div id="toast" role="status" aria-live="polite"></div>
+<div id="motifs" role="dialog" aria-label="Pourquoi passer ?"><p>Pourquoi passer ?</p><div class="choix"></div></div>
+<div id="visionneuse"><img alt="" referrerpolicy="no-referrer"><button id="v-fermer">✕ Fermer</button><b id="v-compte"></b>
+  <button class="nav" id="v-prec" aria-label="Photo précédente">‹</button><button class="nav" id="v-suiv" aria-label="Photo suivante">›</button></div>
 <script>
 // --- Accès aux données : serveur local (/api) ou Supabase (lien de configuration du téléphone)
 const CLE_CFG = 'sdradar_cfg';
@@ -133,7 +180,7 @@ async function rpc(nom, args) {
 // hors ligne attendent dans une file et partent dès que la connexion revient.
 const CLE_CACHE = 'sdradar_cache', CLE_FILE = 'sdradar_file';
 function lire(cle, defaut) { try { return JSON.parse(localStorage.getItem(cle)) ?? defaut; } catch (e) { return defaut; } }
-function ecrire(cle, v) { try { localStorage.setItem(cle, JSON.stringify(v)); } catch (e) { /* plein ou bloqué */ } }
+function ecrire(cle, v) { try { localStorage.setItem(cle, JSON.stringify(v)); } catch (e) { diag = 'mémoire du téléphone pleine'; } }
 let etat = lire(CLE_CACHE, null) || { cartes: [], swipes: {}, total: 0 };
 const sauverEtat = () => ecrire(CLE_CACHE, etat);
 async function rpcSur(nom, args) {  // écriture : si le réseau échoue, on la garde pour plus tard
@@ -152,6 +199,17 @@ async function viderFile() {
       file = lire(CLE_FILE, []).slice(1); ecrire(CLE_FILE, file);
     }
   } finally { envoiEnCours = false; }
+}
+// Décisions pas encore parties : réappliquées sur l'état reçu du serveur (sinon une carte triée
+// hors ligne revenait dans la pile)
+function appliquerFile(swipes) {
+  for (const { nom, args } of lire(CLE_FILE, [])) {
+    if (nom === 'radar_swipe') swipes[args.p_url] = { decision: args.p_decision, motif: args.p_motif, le: new Date().toISOString(),
+      ...(args.p_decision === 'garder' ? { statut: 'a_contacter', carte: args.p_carte || {} } : {}) };
+    else if (nom === 'radar_annuler') delete swipes[args.p_url];
+    else if (nom === 'radar_statut' && swipes[args.p_url]) swipes[args.p_url].statut = args.p_statut;
+  }
+  return swipes;
 }
 addEventListener('online', viderFile);
 const ORDRE = { solide: 0, a_voir: 1 };
@@ -193,11 +251,15 @@ const api = {
     return rpcSur('radar_statut', { p_url: url, p_statut: statut });
   },
 };
-const scene = document.getElementById('scene'), reste = document.getElementById('reste');
-const toast = document.getElementById('toast');
-let file = [], courante = null, dernierSwipe = null, tToast = null;
+const $ = id => document.getElementById(id);
+const scene = $('scene'), reste = $('reste'), toast = $('toast');
+let file = [], courante = null, tToast = null, enCours = false;
 const NIVEAU = { solide: 'SOLIDE', a_voir: 'À VÉRIFIER' };
-const SIGNAUX = { prix_lt_50pct_argus: 'Prix < 50 % de l’argus : méfiance (arnaque possible)' };
+const SIGNAUX = { prix_lt_50pct_argus: 'Prix < 50 % de l’argus : méfiance' };
+const SOURCES = { ebay: 'eBay', ebay_enchere: 'eBay · enchère', ebay_de: 'eBay DE', ebay_gb: 'eBay UK', ebay_us: 'eBay US', ebay_it: 'eBay IT',
+  reverb: 'Reverb', zikinf: 'Zikinf', mercatino: 'Mercatino', kleinanzeigen: 'Kleinanzeigen', marktplaats: 'Marktplaats', blocket: 'Blocket', finn: 'Finn', wallapop: 'Wallapop' };
+const nomSource = s => SOURCES[s] || s;
+const PAYS = { FR: 'France', DE: 'Allemagne', IT: 'Italie', ES: 'Espagne', NL: 'Pays-Bas', BE: 'Belgique', GB: 'Royaume-Uni', US: 'États-Unis', JP: 'Japon', SE: 'Suède', NO: 'Norvège' };
 function finEnchere(fin) {
   const s = Math.round((Date.parse(fin) - Date.now()) / 1000);
   if (!(s > 0)) return 'terminée';
@@ -206,25 +268,30 @@ function finEnchere(fin) {
 }
 const eur = n => Math.round(n).toLocaleString('fr-FR') + ' €';
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const surHttp = u => /^https?:\/\//i.test(String(u || ''));
+// eBay donne des vignettes de 225 px : taille moyenne sur la carte, grande (1 600 px) en visionneuse
+const photoCarte = u => String(u).replace(/\/s-l\d+\.(jpg|jpeg|png|webp)(\?.*)?$/i, '/s-l640.$1');
+const grandePhoto = u => String(u).replace(/\/s-l\d+\.(jpg|jpeg|png|webp)(\?.*)?$/i, '/s-l1600.$1');
+const vignette = u => String(u).replace(/\/s-l\d+\.(jpg|jpeg|png|webp)(\?.*)?$/i, '/s-l225.$1');
 
-let vue = 'trier', toutes = [], diag = 'mode serveur local';
+let vue = 'trier', toutes = [], diag = 'mode serveur local', niveauFiltre = '', encheresSeules = false;
 const STATUTS = { a_contacter: 'À contacter', contacte: 'Contacté', negociation: 'En négociation',
                   achete: 'Acheté', abandonne: 'Abandonné' };
 function ecranConfig() {
   reste.textContent = '';
-  document.querySelector('footer').style.display = 'none';
-  scene.innerHTML = `<div class="liste"><h1>Configurer le téléphone</h1>
-    <p class="infos">Cette appli n'a pas encore ton accès privé (une appli ajoutée à l'écran d'accueil ne
+  montrerActions(false);
+  scene.className = 'liste-vue';
+  scene.innerHTML = `<div class="liste"><div class="bloc"><h2>Configurer le téléphone</h2>
+    <p class="sous">Cette appli n'a pas encore ton accès privé (une appli ajoutée à l'écran d'accueil ne
     partage pas la configuration du navigateur). Scanne le QR affiché sur le PC
     (http://localhost:8765/telephone), fais un appui long sur le lien proposé, choisis « Copier le
     lien », puis colle-le ici.</p>
     <textarea id="lien" rows="4" style="width:100%;background:#14161a;color:#fff;border:2px solid #3a3e48;
-      border-radius:8px;padding:8px" placeholder="Colle le lien ici"></textarea>
-    <p><a class="voir" href="#" id="ok">Enregistrer</a></p><p class="infos" id="msg"></p></div>`;
-  document.getElementById('ok').onclick = e => {
-    e.preventDefault();
-    if (enregistrerLien(document.getElementById('lien').value)) location.reload();
-    else document.getElementById('msg').textContent = 'Lien non reconnu : il doit contenir « cfg= ».';
+      border-radius:8px;padding:8px;font:inherit" placeholder="Colle le lien ici"></textarea>
+    <button class="plus" id="ok">Enregistrer</button><p class="sous" id="msg"></p></div></div>`;
+  $('ok').onclick = () => {
+    if (enregistrerLien($('lien').value)) location.reload();
+    else $('msg').textContent = 'Lien non reconnu : il doit contenir « cfg= ».';
   };
 }
 async function charger() {
@@ -238,18 +305,17 @@ function majFile() {  // nouvelles données : la carte affichée reste en tête,
   const nouvelle = selection(toutes);
   if (courante && nouvelle.some(c => c.url === courante.url)) {
     file = [courante, ...nouvelle.filter(c => c.url !== courante.url)];
-    reste.textContent = file.length + (vue === 'encheres' ? ' enchères' : ' à trier');
+    compter();
   } else { file = nouvelle; if (enDeck()) afficher(); }
 }
 async function chargerDistant() {
   if (etat.cartes.length) { diag = 'cache du téléphone'; toutes = aTrier(etat.cartes, etat.swipes); filtrer(); }
   else scene.innerHTML = '<p class="vide">Chargement des cartes…</p>';
-  viderFile();
+  await viderFile();
   try {
     const p = await rpc('radar_page', { p_debut: 0, p_n: 40 });
     const premiere = p.cartes.map(c => c.url);
-    etat.swipes = p.swipes || {};
-    // première page fraîche + le reste du cache (remplacé au fil des pages suivantes)
+    etat.swipes = appliquerFile(p.swipes || {});
     etat.cartes = [...p.cartes, ...etat.cartes.filter(c => !premiere.includes(c.url))];
     etat.total = p.total; sauverEtat(); diag = `mode Supabase · ${p.total} cartes à trier`;
     majFile();
@@ -258,211 +324,188 @@ async function chargerDistant() {
     while (recues < p.total) {
       const q = await rpc('radar_page', { p_debut: recues, p_n: 60 });
       if (!q.cartes.length) break;
+      const fraiches = new Map(q.cartes.map(c => [c.url, c]));
       q.cartes.forEach(c => vues.add(c.url));
       recues += q.cartes.length;
-      etat.cartes = [...etat.cartes.filter(c => vues.has(c.url)), ...q.cartes.filter(c => !etat.cartes.some(x => x.url === c.url))];
+      // une carte déjà en cache est remplacée par sa version fraîche (prix, enchère)
+      etat.cartes = [...etat.cartes.filter(c => vues.has(c.url)).map(c => fraiches.get(c.url) || c),
+                     ...q.cartes.filter(c => !etat.cartes.some(x => x.url === c.url))];
       sauverEtat(); majFile();
     }
     etat.cartes = etat.cartes.filter(c => vues.has(c.url)); sauverEtat(); majFile();
   } catch (e) {
     if (!etat.cartes.length) scene.innerHTML = '<p class="vide">Connexion impossible (' + esc(e.message) + ').<br>Réessaie dans un instant.</p>';
-    else reste.textContent = (file.length) + ' à trier · hors ligne';
+    else reste.textContent = file.length + ' à trier · hors ligne';
   }
 }
-// Cartes affichées selon l'onglet : « À trier » (filtre de niveau) ou « Enchères » (fin la plus proche
-// d'abord, enchères terminées retirées).
 function selection(liste) {
-  const n = document.getElementById('f-niveau').value;
-  const l = liste.filter(c => !n || c.niveau === n);
-  if (vue !== 'encheres') return l;
+  const l = liste.filter(c => !niveauFiltre || c.niveau === niveauFiltre);
+  if (!encheresSeules) return l;
   return l.filter(c => c.enchere && Date.parse(c.enchere.fin) > Date.now())
     .sort((a, b) => Date.parse(a.enchere.fin) - Date.parse(b.enchere.fin));
 }
-const enDeck = () => vue === 'trier' || vue === 'encheres';
+const enDeck = () => vue === 'trier';
 function filtrer() {
   file = selection(toutes);
-  if (enDeck()) afficher(); else if (vue === 'chasseur') chasseur(); else if (vue === 'argus') argus(); else gardees();
+  if (enDeck()) afficher(); else if (vue === 'chasseur') chasseur(); else if (vue === 'argus') argus(); else prises();
 }
-async function gardees() {
-  const liste = await api.gardees();
-  reste.textContent = liste.length + ' gardées';
-  document.querySelector('footer').style.display = 'none';
-  scene.innerHTML = '<div class="liste">' + (liste.map(c => `
-    <div class="gardee">${c.photo ? `<img src="${esc(c.photo)}" referrerpolicy="no-referrer" alt="">` : ''}
-      <div><b>${esc(c.titre || c.url)}</b>
-        ${c.prix ? eur(c.prix) : ''} ${c.marge_prud ? '· marge ' + eur(c.marge_prud) : ''}<br>
-        <select data-url="${esc(c.url)}">${Object.entries(STATUTS).map(([k, t]) =>
-          `<option value="${k}" ${k === c.statut ? 'selected' : ''}>${t}</option>`).join('')}</select>
-        <a href="${esc(c.url)}" target="_blank" rel="noopener">Ouvrir</a></div></div>`).join('')
-    || '<p class="vide">Rien de gardé pour l’instant.</p>') + '</div>';
-  scene.querySelectorAll('select').forEach(s => s.onchange = () => api.statut(s.dataset.url, s.value));
+function compter() {
+  const n = file.length;
+  reste.textContent = enDeck() ? (n ? n + (encheresSeules ? ' enchère' : ' à trier') + (n > 1 && encheresSeules ? 's' : '') : '') : '';
 }
+function montrerActions(oui) { $('actions').style.display = oui ? 'flex' : 'none'; $('puces').style.display = oui ? 'flex' : 'none'; }
 function onglet(v) {
-  vue = v;
-  document.getElementById('n-trier').classList.toggle('on', v === 'trier');
-  document.getElementById('n-gardees').classList.toggle('on', v === 'gardees');
-  document.getElementById('n-encheres').classList.toggle('on', v === 'encheres');
-  document.getElementById('n-chasseur').classList.toggle('on', v === 'chasseur');
-  document.getElementById('n-argus').classList.toggle('on', v === 'argus');
-  document.querySelector('footer').style.display = v === 'trier' || v === 'encheres' ? 'flex' : 'none';
-  courante = null;
+  vue = v; courante = null;
+  for (const [id, nom] of [['n-trier', 'trier'], ['n-chasseur', 'chasseur'], ['n-prises', 'prises'], ['n-argus', 'argus']])
+    $(id).setAttribute('aria-pressed', String(nom === v));
+  montrerActions(v === 'trier');
   filtrer();
 }
-document.getElementById('n-trier').onclick = () => onglet('trier');
-document.getElementById('n-gardees').onclick = () => onglet('gardees');
-document.getElementById('n-encheres').onclick = () => onglet('encheres');
-document.getElementById('n-chasseur').onclick = () => onglet('chasseur');
-document.getElementById('n-argus').onclick = () => onglet('argus');
-// --- Argus : recherche dans le catalogue, argus le plus récent de chaque modèle
-function argus() {
-  document.querySelector('footer').style.display = 'none';
-  reste.textContent = '';
-  scene.innerHTML = `<div class="liste">
-    <input id="a-q" placeholder="Modèle : ex. Klon Centaur, JEM 20th, Stratocaster CBS 1976" autocomplete="off"
-      style="width:100%;background:#14161a;color:#fff;border:2px solid var(--ligne);border-radius:8px;padding:10px;font:inherit">
-    <p class="infos">Prix demandés (pas des ventes). Moins de 3 annonces : argus peu fiable.</p>
-    <div id="a-res"></div></div>`;
-  let t;
-  document.getElementById('a-q').oninput = e => { clearTimeout(t); t = setTimeout(async () => {
-    const q = e.target.value.trim(), zone = document.getElementById('a-res');
-    if (q.length < 3) { zone.innerHTML = ''; return; }
-    zone.innerHTML = '<p class="infos">Recherche…</p>';
-    try {
-      const r = CFG ? await rpc('radar_modeles', { p_q: q }) : await (await fetch('/api/modeles?q=' + encodeURIComponent(q))).json();
-      zone.innerHTML = r.map(m => `<div class="gardee"><div><b>${esc(m.marque)} ${esc(m.modele)}</b>
-        ${m.mediane ? 'Argus <b>' + eur(m.mediane) + '</b>' + (m.p25 ? ' · fourchette basse ' + eur(m.p25) : '') : 'pas d’argus'}
-        · ${m.n || 0} annonce${(m.n || 0) > 1 ? 's' : ''}${(m.n || 0) < 3 ? ' <b style="text-decoration:underline">peu fiable</b>' : ''}</div></div>`).join('')
-        || '<p class="infos">Aucun modèle trouvé.</p>';
-    } catch (err) { zone.innerHTML = '<p class="infos">Recherche indisponible : ' + esc(err.message) + '</p>'; }
-  }, 400); };
-  document.getElementById('a-q').focus();
+$('n-trier').onclick = () => onglet('trier');
+$('n-chasseur').onclick = () => onglet('chasseur');
+$('n-prises').onclick = () => onglet('prises');
+$('n-argus').onclick = () => onglet('argus');
+document.querySelectorAll('.puce[data-niveau]').forEach(b => b.onclick = () => {
+  niveauFiltre = b.dataset.niveau;
+  document.querySelectorAll('.puce[data-niveau]').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+  courante = null; filtrer();
+});
+$('p-encheres').onclick = () => {
+  encheresSeules = !encheresSeules; $('p-encheres').setAttribute('aria-pressed', String(encheresSeules));
+  courante = null; filtrer();
+};
+// --- Menu ···
+const menu = $('menu');
+function ouvrirMenu(oui) { menu.style.display = oui ? 'flex' : 'none'; $('b-menu').setAttribute('aria-expanded', String(oui)); }
+$('b-menu').onclick = () => ouvrirMenu(menu.style.display !== 'flex');
+$('m-argus').onclick = () => { ouvrirMenu(false); onglet('argus'); };
+$('m-config').onclick = () => { ouvrirMenu(false); ecranConfig(); };
+document.addEventListener('click', e => { if (!e.target.closest('#menu, #b-menu')) ouvrirMenu(false); });
+
+// --- La carte : photo fixe, verdict, prix posé sur la fourchette d'argus, détails repliés
+function ecart(c) { return c.argus_med ? Math.round((c.prix / c.argus_med - 1) * 100) : null; }
+function jauge(c) {
+  const haut = Math.max(c.argus_p75 || c.argus_med || 0, c.prix) * 1.08 || 1;
+  const pos = v => Math.max(0, Math.min(100, v / haut * 100));
+  return `<div class="jauge" role="img" aria-label="Prix ${eur(c.prix)} sur une fourchette d'argus de ${eur(c.argus_p25)} à ${eur(c.argus_p75)}">
+      <div class="rail"></div>
+      ${c.argus_p25 && c.argus_p75 ? `<div class="bande" style="left:${pos(c.argus_p25)}%;width:${pos(c.argus_p75) - pos(c.argus_p25)}%"></div>` : ''}
+      ${c.argus_med ? `<div class="mediane" style="left:${pos(c.argus_med)}%"></div>` : ''}
+      <div class="point" style="left:${pos(c.prix)}%"></div></div>
+    <div class="legende"><span><b class="prix">${eur(c.prix)}</b> annonce</span>
+      <span><b>argus ${eur(c.argus_med)}</b>${c.argus_p25 ? ' · ' + Math.round(c.argus_p25).toLocaleString('fr-FR') + ' – ' + eur(c.argus_p75) : ''}</span></div>`;
 }
-// --- Chasseur : annonces qui correspondent aux fiches de recherche (scripts/chasse.py)
-async function lireChasse() {
-  try {
-    const c = CFG ? await rpc('radar_lire_config', {}) : await (await fetch('/api/config')).json();
-    try { localStorage.setItem('sdradar_config', JSON.stringify(c)); } catch (e) {}
-    return c.chasse;
-  } catch (e) {
-    try { return JSON.parse(localStorage.getItem('sdradar_config') || 'null').chasse; } catch (x) { return null; }
-  }
-}
-async function chasseur() {
-  document.querySelector('footer').style.display = 'none';
-  scene.innerHTML = '<p class="vide">Chargement des recherches…</p>';
-  const ch = await lireChasse();
-  if (vue !== 'chasseur') return;
-  if (!ch || !ch.fiches) { scene.innerHTML = '<p class="vide">Pas encore de recherche chasseur.</p>'; reste.textContent = ''; return; }
-  const total = ch.fiches.reduce((n, f) => n + f.resultats.length, 0);
-  reste.textContent = total + ' trouvée' + (total > 1 ? 's' : '');
-  scene.innerHTML = '<div class="liste">' + ch.fiches.map((f, i) => `
-    <h1 style="font-size:17px;margin:16px 0 2px">${esc(f.nom)}</h1>
-    <p class="infos" style="margin:0 0 8px">${f.prix_max ? 'Budget ' + eur(f.prix_max) : 'Budget non précisé'} · ${f.resultats.length} annonce${f.resultats.length > 1 ? 's' : ''}</p>
-    ${f.resultats.map((r, j) => `<div class="gardee">
-      ${r.photos && r.photos.length ? `<img src="${esc(grandePhoto(r.photos[0]))}" referrerpolicy="no-referrer" alt="" data-f="${i}" data-r="${j}" style="cursor:pointer">` : ''}
-      <div><b>${esc(r.titre)}</b>
-        ${r.prix != null ? eur(r.prix) : 'prix ?'}${r.prix_origine ? ' <small>(' + esc(r.prix_origine) + ')</small>' : ''} · ${esc(r.source)}${r.lieu ? ' · ' + esc(r.lieu) : ''}
-        ${r.nature === 'manche' ? ' · <b style="text-decoration:underline">MANCHE SEUL</b>' : r.au_dessus_pct ? ' · <b>+' + r.au_dessus_pct + ' % au-dessus du plafond</b> (pas d’alerte)' : r.dans_budget ? '' : ' · <b style="text-decoration:underline">hors budget</b>'}
-        ${r.enchere && r.enchere.fin ? '<br>Enchère, fin ' + finEnchere(r.enchere.fin) : ''}
-        ${r.aussi_sur && r.aussi_sur.length ? '<br>Aussi sur : ' + r.aussi_sur.map(x => `<a href="${esc(x.url)}" target="_blank" rel="noopener">${esc(x.source)}${x.prix ? ' ' + eur(x.prix) : ''}</a>`).join(' · ') : ''}<br>
-        <a href="${esc(r.url)}" target="_blank" rel="noopener">Ouvrir l’annonce</a></div></div>`).join('')
-      || '<p class="infos">Rien pour l’instant : la recherche est relancée à chaque mise à jour.</p>'}`).join('')
-    + `<p class="infos">Dernière recherche : ${new Date(ch.le).toLocaleString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</p></div>`;
-  scene.querySelectorAll('img[data-f]').forEach(im => im.onclick = () => {
-    const r = ch.fiches[im.dataset.f].resultats[im.dataset.r];
-    ouvrirPhotos(r.photos.map(grandePhoto));
-  });
+function lieuTexte(c) { return [c.lieu, PAYS[c.pays] || null].filter(Boolean).join(' · '); }
+function htmlCarte(c, devant) {
+  const photos = (c.photos && c.photos.length ? c.photos : [c.photo]).filter(Boolean);
+  const e = ecart(c), marge = c.marge_prud ?? c.marge_med;
+  const etiquettes = [
+    ...(c.aussi_sur || []).slice(0, 2).map(x => `<span>Aussi sur ${esc(nomSource(x.source))}${x.prix ? ' · ' + eur(x.prix) : ''}</span>`),
+    c.main_propre ? '<span>Retrait en main propre</span>' : '',
+    c.envoi === 'a_verifier' ? '<span>Envoi à vérifier</span>' : '',
+    c.prix_reel_lu ? '<span>Prix lu dans le texte</span>' : '',
+    c.enchere ? `<span class="fort">Enchère · fin ${esc(finEnchere(c.enchere.fin))}</span>` : '',
+    c.arbitrage_seul ? '<span class="fort">Arbitrage : revente ailleurs</span>' : '',
+    ...(c.signaux || []).map(s => `<span class="alerte">${esc(SIGNAUX[s] || s)}</span>`),
+  ].join('');
+  const details = [
+    c.n_annonces ? `<span>${c.n_annonces} annonces comparées${c.confiance_argus ? ' · confiance ' + Math.round(c.confiance_argus * 100) + ' %' : ''}</span>` : '',
+    c.fourchette ? `<span><b>Croisement des sites :</b> ${Object.entries(c.fourchette.sites).map(([s, v]) => esc(s) + ' ' + eur(v.med) + ' (' + v.n + ')').join(' · ')} → ${eur(c.fourchette.bas)} – ${eur(c.fourchette.haut)}</span>` : '',
+    c.enchere ? `<span><b>Enchère</b> · mise actuelle ${eur(c.enchere.actuelle)}${c.enchere.nb != null ? ' (' + c.enchere.nb + ' mise' + (c.enchere.nb > 1 ? 's' : '') + ')' : ''}${c.enchere.plafond ? ' · <b>ne pas dépasser ' + eur(c.enchere.plafond) + '</b>' : ''}</span>` : '',
+    c.revente ? `<span><b>Revente conseillée : ${esc(c.revente.marche)}</b> — argus ${eur(c.revente.argus_med)} (${c.revente.n} annonces), marge prudente ${eur(c.revente.marge_prud)} après transport</span>` : '',
+    c.argus_plafonne ? '<span>Argus ramené sous le prix neuf Thomann</span>' : '',
+    c.marge_med != null ? `<span>Marge au cas médian ${eur(c.marge_med)}</span>` : '',
+  ].filter(Boolean).join('');
+  return `<article class="carte ${devant ? 'devant' : 'derriere'}" id="${devant ? 'carte' : 'carte2'}" aria-label="${esc(c.titre)}">
+    ${devant ? '<div class="etiquette" id="e-garder">GARDER</div><div class="etiquette" id="e-rejeter">PASSER</div><div class="etiquette" id="e-plus_tard">PLUS TARD</div>' : ''}
+    <div class="photo-zone">
+      ${photos[0] ? `<img src="${esc(photoCarte(photos[0]))}" referrerpolicy="no-referrer" alt="">` : '<span class="vide-photo">pas de photo</span>'}
+      <span class="pastille niveau ${esc(c.niveau)}">${NIVEAU[c.niveau] || ''}</span>
+      <span class="pastille source">${esc(nomSource(c.source || ''))}${c.pays ? ' · ' + esc(PAYS[c.pays] || c.pays) : ''}</span>
+      ${photos.length > 1 ? '<div class="points">' + photos.map((_, i) => `<span class="${i ? '' : 'on'}"></span>`).join('') + '</div>' : ''}
+      ${photos[0] && devant ? `<button class="agrandir" aria-label="Agrandir les photos">⤢ ${photos.length > 1 ? photos.length + ' photos' : 'Agrandir'}</button>` : ''}
+    </div>
+    <div class="corps">
+      <div class="verdict">
+        <span class="gros ${e == null ? 'neutre' : ''}">${e == null ? eur(c.prix) : (e > 0 ? '+' : '−') + Math.abs(e) + ' %'}</span>
+        <span class="detail">${e == null ? '' : (e <= 0 ? 'sous' : 'au-dessus de') + ' l’argus<br>'}${marge != null && !isNaN(marge) ? '<b>marge prudente ' + eur(marge) + '</b>' : ''}</span>
+      </div>
+      ${c.argus_med ? jauge(c) : ''}
+      <div><h1>${esc(c.titre)}</h1>
+        <div class="sous">${esc([c.marque, c.modele].filter(Boolean).join(' · '))}${lieuTexte(c) ? ' · ' + esc(lieuTexte(c)) : ''}</div></div>
+      ${etiquettes ? '<div class="etiquettes">' + etiquettes + '</div>' : ''}
+      ${details ? `<button class="details-btn" aria-expanded="false">Détails<span aria-hidden="true">⌄</span></button><div class="details">${details}</div>` : ''}
+      <a class="voir" href="${surHttp(c.url) ? esc(c.url) : '#'}" target="_blank" rel="noopener">Ouvrir l’annonce ↗</a>
+    </div></article>`;
 }
 function afficher() {
   courante = file[0] || null;
-  reste.textContent = file.length ? file.length + (vue === 'encheres' ? ' enchères' : ' à trier') : '';
+  scene.className = '';
+  compter();
   if (!courante) {
-    if (vue === 'encheres') { scene.innerHTML = '<p class="vide">Aucune enchère en cours dans tes cartes.<br>Les enchères eBay sont relues à chaque mise à jour.</p>'; return; }
-    scene.innerHTML = '<p class="vide">Plus rien à trier.<br>Reviens après le prochain balayage.<br><small>(' + esc(diag) + ' · filtre : ' + esc(document.getElementById('f-niveau').value || 'tous') + ')</small></p>';
+    if (encheresSeules) { scene.innerHTML = '<p class="vide">Aucune enchère en cours dans tes cartes.<br>Les enchères eBay sont relues à chaque mise à jour.</p>'; return; }
+    scene.innerHTML = '<p class="vide">Plus rien à trier.<br>Reviens après le prochain balayage.<br><small>(' + esc(diag) + (niveauFiltre ? ' · filtre : ' + esc(NIVEAU[niveauFiltre]) : '') + ')</small></p>';
     return;
   }
-  const c = courante;
-  const infos = [
-    c.n_annonces + ' annonces comparées · fourchette ' + eur(c.argus_p25) + ' – ' + eur(c.argus_p75),
-    c.main_propre ? 'Retrait en main propre possible (port 0)' : null,
-    c.argus_plafonne ? 'Argus ramené sous le prix neuf Thomann' : null,
-    c.envoi === 'a_verifier' ? 'Envoi à vérifier avec le vendeur' : null,
-    c.prix_reel_lu ? 'Prix lu dans le texte (affiché 1 €)' : null,
-  ].filter(Boolean).map(t => '<span>' + esc(t) + '</span>').join('');
-  const alertes = (c.signaux || []).map(s => '<span class="alerte">' + esc(SIGNAUX[s] || s) + '</span>').join('');
-  scene.innerHTML = `
-  <div class="carte" id="carte">
-    <div class="etiquette" id="e-garder">GARDER</div>
-    <div class="etiquette" id="e-rejeter">PASSER</div>
-    <div class="etiquette" id="e-plus_tard">PLUS TARD</div>
-    <span class="niveau ${esc(c.niveau)}">${NIVEAU[c.niveau] || ''}</span>
-    <span class="source">${esc(c.source || '')}</span>
-    ${c.photo ? `<div class="cadre-photo"><img class="photo" src="${esc(grandePhoto(c.photo))}" referrerpolicy="no-referrer" alt=""><button class="agrandir">⤢ ${(c.photos || []).length > 1 ? c.photos.length + ' photos' : 'Agrandir'}</button></div>` : ''}
-    <h1>${esc(c.titre)}</h1>
-    <div class="lieu">${esc(c.lieu || '')} · ${esc(c.marque)} ${esc(c.modele)}</div>
-    <div class="prix">
-      <div><small>Prix annonce</small><strong>${eur(c.prix)}</strong></div>
-      <div><small>Argus</small><strong>${eur(c.argus_med)}</strong></div>
-      <div class="marge"><small>Marge prudente</small><strong>${eur(c.marge_prud ?? c.marge_med)}</strong></div>
-    </div>
-    <p class="infos">${infos}</p>
-    ${c.enchere ? `<p class="infos"><span><b>Enchère</b> · fin ${finEnchere(c.enchere.fin)} · mise actuelle ${eur(c.enchere.actuelle)}${c.enchere.nb != null ? ' (' + c.enchere.nb + ' mise' + (c.enchere.nb > 1 ? 's' : '') + ')' : ''}${c.enchere.plafond ? ' · <b>ne pas dépasser ' + eur(c.enchere.plafond) + '</b>' : ''}</span></p>` : ''}
-    ${c.fourchette ? `<p class="infos"><span><b>Croisement des sites :</b> ${Object.entries(c.fourchette.sites).map(([s, v]) => esc(s) + ' ' + eur(v.med) + ' (' + v.n + ')').join(' · ')} → fourchette ${eur(c.fourchette.bas)} – ${eur(c.fourchette.haut)}</span></p>` : ''}
-    ${c.aussi_sur && c.aussi_sur.length ? `<p class="infos"><span><b>Aussi sur :</b> ${c.aussi_sur.map(x => `<a href="${esc(x.url)}" target="_blank" rel="noopener" style="color:var(--texte)">${esc(x.source)}${x.prix ? ' ' + eur(x.prix) : ''}</a>`).join(' · ')}</span></p>` : ''}
-    ${c.revente ? `<p class="infos"><span><b>Revente conseillée : ${esc(c.revente.marche)}</b> — argus ${eur(c.revente.argus_med)} (${c.revente.n} annonces), marge prudente ${eur(c.revente.marge_prud)} après surcoût de transport</span></p>` : ''}
-    ${alertes}
-    <p></p>
-    <a class="voir" href="${esc(c.url)}" target="_blank" rel="noopener">Ouvrir l’annonce</a>
-  </div>`;
-  brancherGeste(document.getElementById('carte'));
-  const b = document.querySelector('.agrandir');
+  const c = courante, suivante = file[1];
+  scene.innerHTML = (suivante ? htmlCarte(suivante, false) : '') + htmlCarte(c, true);
+  const el = $('carte');
+  brancherGeste(el);
+  const b = el.querySelector('.agrandir');
   if (b) b.onclick = () => ouvrirPhotos((c.photos && c.photos.length ? c.photos : [c.photo]).map(grandePhoto));
+  const d = el.querySelector('.details-btn');
+  if (d) d.onclick = () => { const o = el.querySelector('.details').classList.toggle('ouvert'); d.setAttribute('aria-expanded', String(o)); };
+  if (suivante && suivante.photo) { const im = new Image(); im.referrerPolicy = 'no-referrer'; im.src = photoCarte(suivante.photo); }
+  enCours = false;
 }
 // --- Visionneuse : toutes les photos de l'annonce, ‹ › ou glisser pour passer de l'une à l'autre
 let vPhotos = [], vIndex = 0;
-const V = document.getElementById('visionneuse');
+const V = $('visionneuse');
 function montrerPhoto() {
   V.querySelector('img').src = vPhotos[vIndex];
-  document.getElementById('v-compte').textContent = vPhotos.length > 1 ? (vIndex + 1) + ' / ' + vPhotos.length : '';
-  document.getElementById('v-prec').style.display = document.getElementById('v-suiv').style.display =
-    vPhotos.length > 1 ? 'block' : 'none';
+  $('v-compte').textContent = vPhotos.length > 1 ? (vIndex + 1) + ' / ' + vPhotos.length : '';
+  $('v-prec').style.display = $('v-suiv').style.display = vPhotos.length > 1 ? 'block' : 'none';
 }
 function ouvrirPhotos(liste) { vPhotos = liste; vIndex = 0; montrerPhoto(); V.style.display = 'flex'; }
+function fermerPhotos() { V.style.display = 'none'; }
 function decaler(n) { vIndex = (vIndex + n + vPhotos.length) % vPhotos.length; montrerPhoto(); }
-document.getElementById('v-prec').onclick = e => { e.stopPropagation(); decaler(-1); };
-document.getElementById('v-suiv').onclick = e => { e.stopPropagation(); decaler(1); };
+$('v-prec').onclick = e => { e.stopPropagation(); decaler(-1); };
+$('v-suiv').onclick = e => { e.stopPropagation(); decaler(1); };
+$('v-fermer').onclick = e => { e.stopPropagation(); fermerPhotos(); };
 let vx = null;
 V.addEventListener('pointerdown', e => { vx = e.clientX; });
 V.addEventListener('pointerup', e => {
   if (e.target.closest('button')) return;
   const d = vx === null ? 0 : e.clientX - vx; vx = null;
-  if (Math.abs(d) > 50 && vPhotos.length > 1) decaler(d < 0 ? 1 : -1);  // glisser : photo suivante
-  else V.style.display = 'none';  // simple toucher : fermer
+  if (Math.abs(d) > 50 && vPhotos.length > 1) decaler(d < 0 ? 1 : -1);
+  else fermerPhotos();
 });
-// eBay donne des vignettes de 225 px : on demande la grande version (1 600 px) de la même photo
-function grandePhoto(u) { return String(u).replace(/\/s-l\d+\.(jpg|jpeg|png|webp)(\?.*)?$/i, '/s-l1600.$1'); }
+const visionneuseOuverte = () => V.style.display === 'flex';
 
-// Geste : glisser franchement à droite (garder) ou à gauche (passer). Un mouvement vertical (faire
-// défiler, regarder la photo) n'est jamais un swipe ; un geste interrompu par le navigateur
-// (pointercancel) n'en est pas un non plus. Vers le haut = « plus tard » à la souris seulement.
+// --- Geste : glisser à droite (garder) ou à gauche (passer), par la distance (30 % de l'écran) ou
+// par la vitesse (un petit geste vif suffit). Vers le haut = « plus tard », au doigt depuis la
+// photo (le reste de la carte défile verticalement), à la souris partout. Un geste interrompu
+// par le navigateur (pointercancel) ne décide jamais.
 function brancherGeste(el) {
-  let x0 = 0, y0 = 0, dx = 0, dy = 0, actif = false, sens = null, souris = false;
+  let x0 = 0, y0 = 0, dx = 0, dy = 0, actif = false, sens = null, surPhoto = false, souris = false;
+  let tPrec = 0, xPrec = 0, vx = 0;
   const remettre = () => {
     actif = false; sens = null; el.classList.remove('glisse'); el.style.transform = '';
     ['garder', 'rejeter', 'plus_tard'].forEach(d => montrer(d, 0));
   };
   el.addEventListener('pointerdown', e => {
     if (e.target.closest('a, button')) return;
-    actif = true; sens = null; x0 = e.clientX; y0 = e.clientY; dx = dy = 0;
-    souris = e.pointerType === 'mouse';
+    actif = true; sens = null; x0 = xPrec = e.clientX; y0 = e.clientY; dx = dy = vx = 0; tPrec = e.timeStamp;
+    souris = e.pointerType === 'mouse'; surPhoto = !!e.target.closest('.photo-zone');
     el.classList.add('glisse');
   });
   el.addEventListener('pointermove', e => {
     if (!actif) return;
     dx = e.clientX - x0; dy = e.clientY - y0;
+    const dt = e.timeStamp - tPrec; if (dt > 0) { vx = (e.clientX - xPrec) / dt; tPrec = e.timeStamp; xPrec = e.clientX; }
     if (!sens && Math.hypot(dx, dy) > 14) {
       sens = Math.abs(dx) > Math.abs(dy) * 1.3 ? 'h' : 'v';
-      if (sens === 'v' && !souris) { remettre(); return; }  // défilement : on laisse faire
+      if (sens === 'v' && !souris && !surPhoto) { remettre(); return; }  // défilement du contenu
       try { el.setPointerCapture(e.pointerId); } catch (err) {}
     }
     if (!sens) return;
@@ -470,32 +513,29 @@ function brancherGeste(el) {
     el.style.transform = `translate(${sens === 'h' ? dx : 0}px,${vy}px) rotate(${sens === 'h' ? dx / 25 : 0}deg)`;
     const s = seuil();
     montrer('garder', sens === 'h' ? dx / s : 0); montrer('rejeter', sens === 'h' ? -dx / s : 0);
-    montrer('plus_tard', sens === 'v' ? -dy / 160 : 0);
+    montrer('plus_tard', sens === 'v' ? -dy / 140 : 0);
   });
   el.addEventListener('pointerup', () => {
     if (!actif) return;
-    const s = seuil(), h = sens === 'h', v = sens === 'v' && souris;
+    const s = seuil(), h = sens === 'h', v = sens === 'v';
     actif = false; el.classList.remove('glisse');
-    if (h && dx > s) decider('garder');
-    else if (h && dx < -s) decider('rejeter');
-    else if (v && dy < -160) decider('plus_tard');
+    const vif = Math.abs(vx) > 0.6 && Math.abs(dx) > 40;  // px/ms
+    if (h && (dx > s || (vif && dx > 0))) decider('garder');
+    else if (h && (dx < -s || (vif && dx < 0))) decider('rejeter');
+    else if (v && dy < -140) decider('plus_tard');
     else remettre();
   });
-  el.addEventListener('pointercancel', remettre);  // jamais de décision sur un geste interrompu
+  el.addEventListener('pointercancel', remettre);
 }
 const seuil = () => Math.max(110, window.innerWidth * 0.3);
-function montrer(d, v) { const e = document.getElementById('e-' + d); if (e) e.style.opacity = Math.max(0, Math.min(1, v)); }
-
-async function envoyer(url, decision, motif, carte) {
-  await api.swipe(url, decision, motif, carte);
-}
+function montrer(d, v) { const e = $('e-' + d); if (e) e.style.opacity = Math.max(0, Math.min(1, v)); }
+function vibrer(ms) { try { if (navigator.vibrate) navigator.vibrate(ms); } catch (e) {} }
 
 // --- Retour en arrière : les 30 derniers swipes, du plus récent au plus ancien
 const CLE_PILE = 'sdradar_pile';
-let pile = [];
-try { pile = JSON.parse(localStorage.getItem(CLE_PILE) || '[]'); } catch (e) { pile = []; }
-function sauverPile() { try { localStorage.setItem(CLE_PILE, JSON.stringify(pile.slice(-30))); } catch (e) {} majRetour(); }
-function majRetour() { const b = document.getElementById('b-retour'); if (b) b.disabled = !pile.length; }
+let pile = lire(CLE_PILE, []);
+function sauverPile() { ecrire(CLE_PILE, pile.slice(-30)); majRetour(); }
+function majRetour() { $('b-retour').disabled = !pile.length; }
 function empiler(c) { pile.push(c); sauverPile(); }
 async function retour() {
   const c = pile.pop(); sauverPile();
@@ -506,46 +546,165 @@ async function retour() {
   file = [c, ...file.filter(x => x.url !== c.url)];
   courante = null; afficher();
 }
-document.getElementById('b-retour').onclick = retour;
+$('b-retour').onclick = retour;
 majRetour();
 
-function decider(decision) {
-  if (!courante) return;
-  const c = courante, el = document.getElementById('carte');
-  const sortie = { garder: 'translate(140vw,0)', rejeter: 'translate(-140vw,0)', plus_tard: 'translate(0,-120vh)' }[decision];
+function decider(decision, motif) {
+  if (!courante || enCours) return;  // un double appui ne saute plus une carte
+  enCours = true;
+  const c = courante, el = $('carte');
+  courante = null;
+  const sortie = { garder: 'translate(140vw,0) rotate(12deg)', rejeter: 'translate(-140vw,0) rotate(-12deg)', plus_tard: 'translate(0,-120vh)' }[decision];
   el.classList.remove('glisse'); el.style.transform = sortie;
+  vibrer(12);
   const snap = { titre: c.titre, prix: c.prix, argus_med: c.argus_med, marge_prud: c.marge_prud,
     photo: c.photo, lieu: c.lieu, source: c.source, marque: c.marque, modele: c.modele };
-  envoyer(c.url, decision, null, snap);
+  api.swipe(c.url, decision, motif || null, snap);
   empiler(c);
-  dernierSwipe = c; file.shift(); toutes = toutes.filter(x => x.url !== c.url);
-  setTimeout(afficher, 180);
-  proposerMotif(c, decision);
+  file.shift(); toutes = toutes.filter(x => x.url !== c.url);
+  setTimeout(afficher, 200);
+  confirmer(c, decision, motif);
 }
-
-function proposerMotif(c, decision) {
+const LIBELLE = { garder: 'Gardée', rejeter: 'Passée', plus_tard: 'Plus tard' };
+const MOTIFS = [['trop_cher', 'Trop cher'], ['pas_interesse', 'Pas intéressé'], ['etat', 'État'], ['arnaque', 'Arnaque']];
+function confirmer(c, decision, motif) {
   clearTimeout(tToast);
-  const motifs = decision === 'rejeter'
-    ? [['trop_cher', 'Trop cher'], ['pas_interesse', 'Pas intéressé'], ['etat', 'État'], ['arnaque', 'Arnaque']] : [];
-  toast.innerHTML = '<span>' + ({garder:'Gardé',rejeter:'Passé',plus_tard:'Plus tard'}[decision]) + '</span>' +
-    motifs.map(([k, t]) => `<button data-m="${k}">${t}</button>`).join('') + '<button data-m="annuler">Annuler</button>';
+  const m = MOTIFS.find(x => x[0] === motif);
+  toast.innerHTML = `<span>${LIBELLE[decision]}${m ? ' · « ' + m[1] + ' »' : ''}</span><button>Annuler</button>`;
   toast.style.display = 'flex';
-  toast.querySelectorAll('button').forEach(b => b.onclick = async () => {
-    if (b.dataset.m === 'annuler') {
-      await api.annuler(c.url);
-      pile = pile.filter(x => x.url !== c.url); sauverPile();
-      file.unshift(c); afficher();
-    } else await envoyer(c.url, 'rejeter', b.dataset.m);
+  toast.querySelector('button').onclick = async () => {
     toast.style.display = 'none';
-  });
-  tToast = setTimeout(() => toast.style.display = 'none', 6000);
+    await api.annuler(c.url);
+    pile = pile.filter(x => x.url !== c.url); sauverPile();
+    file.unshift(c); courante = null; afficher();
+  };
+  tToast = setTimeout(() => toast.style.display = 'none', 4000);
 }
+// Appui long sur « Passer » : dire pourquoi (apprentissage), sans toast à cinq boutons à chaque fois
+const motifs = $('motifs');
+motifs.querySelector('.choix').innerHTML = MOTIFS.map(([k, t]) => `<button data-m="${k}">${t}</button>`).join('') + '<button data-m="">Sans motif</button>';
+motifs.querySelectorAll('button').forEach(b => b.onclick = () => { motifs.style.display = 'none'; decider('rejeter', b.dataset.m || null); });
+let tLong = null, longDeclenche = false;
+const bRejeter = $('b-rejeter');
+bRejeter.addEventListener('pointerdown', () => { longDeclenche = false; tLong = setTimeout(() => { longDeclenche = true; if (courante) { vibrer(20); motifs.style.display = 'flex'; } }, 500); });
+['pointerup', 'pointerleave', 'pointercancel'].forEach(ev => bRejeter.addEventListener(ev, () => clearTimeout(tLong)));
+bRejeter.addEventListener('click', () => { if (!longDeclenche) decider('rejeter'); });
+bRejeter.addEventListener('contextmenu', e => e.preventDefault());
+document.addEventListener('click', e => { if (motifs.style.display === 'flex' && !e.target.closest('#motifs, #b-rejeter')) motifs.style.display = 'none'; });
+$('b-garder').onclick = () => decider('garder');
+$('b-plus_tard').onclick = () => decider('plus_tard');
+addEventListener('keydown', e => {
+  if (e.key === 'Escape') { fermerPhotos(); ouvrirMenu(false); motifs.style.display = 'none'; return; }
+  if (visionneuseOuverte()) { if (e.key === 'ArrowRight') decaler(1); if (e.key === 'ArrowLeft') decaler(-1); return; }
+  if (!enDeck() || e.target.matches('input, textarea, select')) return;
+  const d = { ArrowRight: 'garder', ArrowLeft: 'rejeter', ArrowUp: 'plus_tard' }[e.key];
+  if (d) decider(d);
+});
 
-document.getElementById('b-garder').onclick = () => decider('garder');
-document.getElementById('b-rejeter').onclick = () => decider('rejeter');
-document.getElementById('b-plus_tard').onclick = () => decider('plus_tard');
-addEventListener('keydown', e => ({ ArrowRight: 'garder', ArrowLeft: 'rejeter', ArrowUp: 'plus_tard' }[e.key] &&
-  decider({ ArrowRight: 'garder', ArrowLeft: 'rejeter', ArrowUp: 'plus_tard' }[e.key])));
+// --- Argus : recherche dans le catalogue, argus le plus récent de chaque modèle
+function argus() {
+  reste.textContent = '';
+  scene.className = 'liste-vue';
+  scene.innerHTML = `<div class="liste">
+    <input id="a-q" placeholder="Modèle : ex. Klon Centaur, JEM 20th, Stratocaster CBS 1976" autocomplete="off" style="width:100%;padding:10px">
+    <p class="sous" style="margin:0">Prix demandés (pas des ventes). Moins de 3 annonces : argus peu fiable.</p>
+    <div id="a-res" class="liste"></div></div>`;
+  let t;
+  $('a-q').oninput = e => { clearTimeout(t); t = setTimeout(async () => {
+    const q = e.target.value.trim(), zone = $('a-res');
+    if (q.length < 3) { zone.innerHTML = ''; return; }
+    zone.innerHTML = '<p class="sous">Recherche…</p>';
+    try {
+      const r = CFG ? await rpc('radar_modeles', { p_q: q }) : await (await fetch('/api/modeles?q=' + encodeURIComponent(q))).json();
+      zone.innerHTML = r.map(m => `<div class="ligne"><div class="txt"><b>${esc(m.marque)} ${esc(m.modele)}</b>
+        <small>${m.mediane ? 'Argus <b>' + eur(m.mediane) + '</b>' + (m.p25 ? ' · fourchette basse ' + eur(m.p25) : '') : 'pas d’argus'}
+        · ${m.n || 0} annonce${(m.n || 0) > 1 ? 's' : ''}${(m.n || 0) < 3 ? ' · <b style="text-decoration:underline">peu fiable</b>' : ''}</small></div></div>`).join('')
+        || '<p class="sous">Aucun modèle trouvé.</p>';
+    } catch (err) { zone.innerHTML = '<p class="sous">Recherche indisponible : ' + esc(err.message) + '</p>'; }
+  }, 400); };
+  $('a-q').focus();
+}
+// --- Chasseur : une fiche = un bloc replié (compteurs, filtres), pas 900 lignes d'un coup
+async function lireChasse() {
+  try {
+    const c = CFG ? await rpc('radar_lire_config', {}) : await (await fetch('/api/config')).json();
+    try { localStorage.setItem('sdradar_config', JSON.stringify(c)); } catch (e) {}
+    return c.chasse;
+  } catch (e) {
+    try { return JSON.parse(localStorage.getItem('sdradar_config') || 'null').chasse; } catch (x) { return null; }
+  }
+}
+const chFiltre = {};  // id de fiche → 'budget' | 'proches' | 'manches'
+const chNombre = {};  // id de fiche → lignes affichées
+const PAR_PAGE = 25;
+function sousEnsemble(f) {
+  const k = chFiltre[f.id] || 'budget';
+  return f.resultats.filter(r => k === 'manches' ? r.nature === 'manche'
+    : k === 'proches' ? r.nature !== 'manche' && !r.dans_budget && r.au_dessus_pct
+    : r.nature !== 'manche' && (r.dans_budget || !r.au_dessus_pct && f.prix_max == null));
+}
+function ligneChasse(r) {
+  const img = r.photos && r.photos.length && surHttp(r.photos[0]) ? `<img src="${esc(vignette(r.photos[0]))}" loading="lazy" referrerpolicy="no-referrer" alt="">` : '<span class="vignette"></span>';
+  const ratio = r.prix != null && r.plafond ? Math.round(r.prix / r.plafond * 100) : null;
+  const detail = [r.prix != null ? eur(r.prix) : 'prix ?', r.prix_origine ? '(' + esc(r.prix_origine) + ')' : '', nomSource(r.source), r.lieu,
+    r.nature === 'manche' ? '<b style="text-decoration:underline">manche seul</b>' : r.au_dessus_pct ? '<b>+' + r.au_dessus_pct + ' % au-dessus du plafond</b>' : r.dans_budget ? '' : '<b style="text-decoration:underline">hors budget</b>',
+    r.enchere && r.enchere.fin ? 'enchère, fin ' + finEnchere(r.enchere.fin) : '',
+    r.aussi_sur && r.aussi_sur.length ? 'aussi sur ' + r.aussi_sur.map(x => esc(x.source)).join(', ') : ''].filter(Boolean).map(x => x.startsWith('<') ? x : esc(x)).join(' · ');
+  return `<a class="ligne ${r.nature === 'manche' ? 'manche' : ''}" href="${surHttp(r.url) ? esc(r.url) : '#'}" target="_blank" rel="noopener">${img}
+    <span class="txt"><b>${esc(r.titre)}</b><small>${detail}</small></span>${ratio != null && r.nature !== 'manche' ? `<span class="ratio" title="du plafond">${ratio} %</span>` : ''}</a>`;
+}
+let chasseCache = null;
+async function chasseur() {
+  scene.className = 'liste-vue';
+  if (!chasseCache) { scene.innerHTML = '<p class="vide">Chargement des recherches…</p>'; chasseCache = await lireChasse(); }
+  const ch = chasseCache;
+  if (vue !== 'chasseur') return;
+  if (!ch || !ch.fiches) { scene.innerHTML = '<p class="vide">Pas encore de recherche chasseur.</p>'; reste.textContent = ''; return; }
+  const total = ch.fiches.reduce((n, f) => n + f.resultats.length, 0);
+  reste.textContent = total + ' trouvée' + (total > 1 ? 's' : '');
+  scene.innerHTML = '<div class="liste">' + ch.fiches.map(f => {
+    const n = { budget: f.resultats.filter(r => r.nature !== 'manche' && (r.dans_budget || !r.au_dessus_pct && f.prix_max == null)).length,
+      proches: f.resultats.filter(r => r.nature !== 'manche' && !r.dans_budget && r.au_dessus_pct).length,
+      manches: f.resultats.filter(r => r.nature === 'manche').length };
+    const k = chFiltre[f.id] || 'budget', lignes = sousEnsemble(f), max = chNombre[f.id] || PAR_PAGE;
+    return `<section class="bloc" data-f="${esc(f.id)}"><div><h2>${esc(f.nom)}</h2>
+      <small class="sous">${f.prix_max ? 'Budget ' + eur(f.prix_max) : 'Pas de budget'} · ${f.resultats.length} annonce${f.resultats.length > 1 ? 's' : ''}${f.pour && f.pour !== 'moi' ? ' · pour ' + esc(f.pour) : ''}</small></div>
+      <div class="etiquettes" style="gap:6px">
+        <button class="puce" data-k="budget" aria-pressed="${k === 'budget'}">${f.prix_max ? 'Sous plafond' : 'Toutes'} · ${n.budget}</button>
+        ${n.proches ? `<button class="puce" data-k="proches" aria-pressed="${k === 'proches'}">Proches · ${n.proches}</button>` : ''}
+        ${n.manches ? `<button class="puce tiret" data-k="manches" aria-pressed="${k === 'manches'}">Manches · ${n.manches}</button>` : ''}
+      </div>
+      ${lignes.slice(0, max).map(ligneChasse).join('') || '<p class="sous" style="margin:0">Rien pour l’instant : la recherche est relancée à chaque mise à jour.</p>'}
+      ${lignes.length > max ? `<button class="plus" data-plus="${esc(f.id)}">Voir ${Math.min(PAR_PAGE, lignes.length - max)} de plus (${lignes.length - max} restantes)</button>` : ''}
+    </section>`;
+  }).join('') + `<p class="sous" style="text-align:center">Dernière recherche : ${new Date(ch.le).toLocaleString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</p></div>`;
+  scene.querySelectorAll('.puce[data-k]').forEach(b => b.onclick = () => { const id = b.closest('section').dataset.f; chFiltre[id] = b.dataset.k; chNombre[id] = PAR_PAGE; chasseur(); });
+  scene.querySelectorAll('[data-plus]').forEach(b => b.onclick = () => { chNombre[b.dataset.plus] = (chNombre[b.dataset.plus] || PAR_PAGE) + PAR_PAGE; chasseur(); });
+}
+// --- Mes prises (ex-« Gardées ») : étapes en pastilles, parcours du prix
+let prisesFiltre = '';
+async function prises() {
+  const liste = await api.gardees();
+  if (vue !== 'prises') return;
+  scene.className = 'liste-vue';
+  const comptes = {}; liste.forEach(c => comptes[c.statut] = (comptes[c.statut] || 0) + 1);
+  const visibles = liste.filter(c => !prisesFiltre || c.statut === prisesFiltre);
+  reste.textContent = liste.length + ' prise' + (liste.length > 1 ? 's' : '');
+  scene.innerHTML = `<div class="liste"><div class="puces" style="padding:0">
+      <button class="puce" data-s="" aria-pressed="${!prisesFiltre}">Toutes · ${liste.length}</button>
+      ${Object.entries(STATUTS).map(([k, t]) => comptes[k] ? `<button class="puce" data-s="${k}" aria-pressed="${prisesFiltre === k}">${t} · ${comptes[k]}</button>` : '').join('')}</div>
+    ${visibles.map(c => `<div class="bloc"><div class="ligne" style="padding:0;background:transparent">
+      ${c.photo && surHttp(c.photo) ? `<img src="${esc(vignette(c.photo))}" loading="lazy" referrerpolicy="no-referrer" alt="">` : '<span class="vignette"></span>'}
+      <span class="txt"><b>${esc(c.titre || c.url)}</b>
+        <small>${[nomSource(c.source), c.lieu].filter(Boolean).map(esc).join(' · ')}${c.le ? ' · gardée le ' + new Date(c.le).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }) : ''}</small>
+        <small>${c.prix ? 'demandé <b>' + eur(c.prix) + '</b>' : ''}${c.argus_med ? ' → argus <b style="color:var(--accent)">' + eur(c.argus_med) + '</b>' : ''}${c.marge_prud ? ' · marge ' + eur(c.marge_prud) : ''}</small></span></div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <select data-url="${esc(c.url)}" aria-label="Étape">${Object.entries(STATUTS).map(([k, t]) => `<option value="${k}" ${k === c.statut ? 'selected' : ''}>${t}</option>`).join('')}</select>
+        <a class="voir" style="flex:1;padding:8px" href="${surHttp(c.url) ? esc(c.url) : '#'}" target="_blank" rel="noopener">Ouvrir ↗</a></div></div>`).join('')
+      || '<p class="vide">Rien de gardé pour l’instant.</p>'}</div>`;
+  scene.querySelectorAll('.puce[data-s]').forEach(b => b.onclick = () => { prisesFiltre = b.dataset.s; prises(); });
+  scene.querySelectorAll('select').forEach(s => s.onchange = () => api.statut(s.dataset.url, s.value));
+}
 if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js');
 charger();
 </script>
