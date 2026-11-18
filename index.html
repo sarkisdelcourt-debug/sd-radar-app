@@ -362,7 +362,7 @@ async function chasseur() {
       ${r.photos && r.photos.length ? `<img src="${esc(grandePhoto(r.photos[0]))}" referrerpolicy="no-referrer" alt="" data-f="${i}" data-r="${j}" style="cursor:pointer">` : ''}
       <div><b>${esc(r.titre)}</b>
         ${r.prix != null ? eur(r.prix) : 'prix ?'}${r.prix_origine ? ' <small>(' + esc(r.prix_origine) + ')</small>' : ''} · ${esc(r.source)}${r.lieu ? ' · ' + esc(r.lieu) : ''}
-        ${r.nature === 'manche' ? ' · <b style="text-decoration:underline">MANCHE SEUL</b>' : r.dans_budget ? '' : ' · <b style="text-decoration:underline">hors budget</b>'}
+        ${r.nature === 'manche' ? ' · <b style="text-decoration:underline">MANCHE SEUL</b>' : r.au_dessus_pct ? ' · <b>+' + r.au_dessus_pct + ' % au-dessus du plafond</b> (pas d’alerte)' : r.dans_budget ? '' : ' · <b style="text-decoration:underline">hors budget</b>'}
         ${r.enchere && r.enchere.fin ? '<br>Enchère, fin ' + finEnchere(r.enchere.fin) : ''}
         ${r.aussi_sur && r.aussi_sur.length ? '<br>Aussi sur : ' + r.aussi_sur.map(x => `<a href="${esc(x.url)}" target="_blank" rel="noopener">${esc(x.source)}${x.prix ? ' ' + eur(x.prix) : ''}</a>`).join(' · ') : ''}<br>
         <a href="${esc(r.url)}" target="_blank" rel="noopener">Ouvrir l’annonce</a></div></div>`).join('')
