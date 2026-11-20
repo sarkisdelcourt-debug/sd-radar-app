@@ -100,6 +100,8 @@
   .ligne b { font-size:14px; line-height:1.2; word-break:break-word; }
   .ligne small { font-size:13px; color:var(--doux); }
   .ligne .ratio { font-size:12px; font-weight:800; color:var(--accent); flex:none; }
+  .fiche-dash label { display:flex; justify-content:space-between; align-items:center; gap:8px; font-size:14px; }
+  .fiche-dash input, .fiche-dash select { width:9em; min-height:36px; background:#14161a; color:var(--texte); border:2px solid #3a3e48; border-radius:8px; padding:4px 8px; font:inherit; }
   .plus { min-height:40px; border-radius:10px; border:2px solid var(--ligne); background:transparent; color:var(--texte); font-size:14px; font-weight:600; }
   select, input { background:var(--creux); color:var(--texte); border:2px solid var(--ligne); border-radius:8px; padding:8px; font:inherit; font-size:14px; }
   /* --- toast, feuille des motifs, visionneuse --- */
@@ -400,6 +402,7 @@ function htmlCarte(c, devant) {
   const photos = (c.photos && c.photos.length ? c.photos : [c.photo]).filter(Boolean);
   const e = ecart(c), marge = c.marge_prud ?? c.marge_med;
   const etiquettes = [
+    c.possede ? `<span><b>Tu en as déjà ${c.possede.n}</b></span>` : '',
     ...(c.aussi_sur || []).slice(0, 2).map(x => `<span>Aussi sur ${esc(nomSource(x.source))}${x.prix ? ' · ' + eur(x.prix) : ''}</span>`),
     c.main_propre ? '<span>Retrait en main propre</span>' : '',
     c.envoi === 'a_verifier' ? '<span>Envoi à vérifier</span>' : '',
@@ -409,6 +412,7 @@ function htmlCarte(c, devant) {
     ...(c.signaux || []).map(s => `<span class="alerte">${esc(SIGNAUX[s] || s)}</span>`),
   ].join('');
   const details = [
+    c.possede ? `<span><b>Déjà dans ton inventaire</b> (${[c.possede.perso ? c.possede.perso + ' perso' : '', c.possede.sdmc ? c.possede.sdmc + ' SDMC' : ''].filter(Boolean).join(', ')}) : ${(c.possede.exemples || []).map(esc).join(' · ')}${c.possede.le ? ' — Dashboard matériel du ' + new Date(c.possede.le).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }) : ''}</span>` : '',
     c.n_annonces ? `<span>${c.n_annonces} annonces comparées${c.confiance_argus ? ' · confiance ' + Math.round(c.confiance_argus * 100) + ' %' : ''}</span>` : '',
     c.fourchette ? `<span><b>Croisement des sites :</b> ${Object.entries(c.fourchette.sites).map(([s, v]) => esc(s) + ' ' + eur(v.med) + ' (' + v.n + ')').join(' · ')} → ${eur(c.fourchette.bas)} – ${eur(c.fourchette.haut)}</span>` : '',
     c.enchere ? `<span><b>Enchère</b> · mise actuelle ${eur(c.enchere.actuelle)}${c.enchere.nb != null ? ' (' + c.enchere.nb + ' mise' + (c.enchere.nb > 1 ? 's' : '') + ')' : ''}${c.enchere.plafond ? ' · <b>ne pas dépasser ' + eur(c.enchere.plafond) + '</b>' : ''}</span>` : '',
@@ -653,6 +657,16 @@ function ligneChasse(r) {
   return `<a class="ligne ${r.nature === 'manche' ? 'manche' : ''}" href="${surHttp(r.url) ? esc(r.url) : '#'}" target="_blank" rel="noopener">${img}
     <span class="txt"><b>${esc(r.titre)}</b><small>${detail}</small></span>${ratio != null && r.nature !== 'manche' ? `<span class="ratio" title="du plafond">${ratio} %</span>` : ''}</a>`;
 }
+// Objets « à surveiller » du Dashboard matériel qui n'ont pas encore de fiche (lecture seule du
+// vault) : rien n'est chassé tant qu'on n'a pas choisi, chaque fiche allonge le passage.
+function blocPropositions(ps) {
+  if (!ps || !ps.length) return '';
+  const le = ps[0].le;
+  return `<section class="bloc"><div><h2>Depuis ta liste à surveiller</h2>
+    <small class="sous">${ps.length} objet${ps.length > 1 ? 's' : ''} du Dashboard matériel${le ? ' (' + new Date(le).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }) + ')' : ''} sans recherche. Dis à Claude lesquels chasser, avec un budget.</small></div>
+    ${ps.map(p => `<div class="ligne" style="cursor:default"><span class="vignette"></span><span class="txt"><b>${esc(p.nom)}</b>${p.notes ? `<small>${esc(p.notes)}</small>` : ''}</span></div>`).join('')}
+  </section>`;
+}
 let chasseCache = null;
 async function chasseur() {
   scene.className = 'liste-vue';
@@ -677,7 +691,7 @@ async function chasseur() {
       ${lignes.slice(0, max).map(ligneChasse).join('') || '<p class="sous" style="margin:0">Rien pour l’instant : la recherche est relancée à chaque mise à jour.</p>'}
       ${lignes.length > max ? `<button class="plus" data-plus="${esc(f.id)}">Voir ${Math.min(PAR_PAGE, lignes.length - max)} de plus (${lignes.length - max} restantes)</button>` : ''}
     </section>`;
-  }).join('') + `<p class="sous" style="text-align:center">Dernière recherche : ${new Date(ch.le).toLocaleString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</p></div>`;
+  }).join('') + blocPropositions(ch.propositions) + `<p class="sous" style="text-align:center">Dernière recherche : ${new Date(ch.le).toLocaleString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</p></div>`;
   scene.querySelectorAll('.puce[data-k]').forEach(b => b.onclick = () => { const id = b.closest('section').dataset.f; chFiltre[id] = b.dataset.k; chNombre[id] = PAR_PAGE; chasseur(); });
   scene.querySelectorAll('[data-plus]').forEach(b => b.onclick = () => { chNombre[b.dataset.plus] = (chNombre[b.dataset.plus] || PAR_PAGE) + PAR_PAGE; chasseur(); });
 }
@@ -693,17 +707,63 @@ async function prises() {
   scene.innerHTML = `<div class="liste"><div class="puces" style="padding:0">
       <button class="puce" data-s="" aria-pressed="${!prisesFiltre}">Toutes · ${liste.length}</button>
       ${Object.entries(STATUTS).map(([k, t]) => comptes[k] ? `<button class="puce" data-s="${k}" aria-pressed="${prisesFiltre === k}">${t} · ${comptes[k]}</button>` : '').join('')}</div>
-    ${visibles.map(c => `<div class="bloc"><div class="ligne" style="padding:0;background:transparent">
+    ${visibles.map((c, i) => `<div class="bloc"><div class="ligne" style="padding:0;background:transparent">
       ${c.photo && surHttp(c.photo) ? `<img src="${esc(vignette(c.photo))}" loading="lazy" referrerpolicy="no-referrer" alt="">` : '<span class="vignette"></span>'}
       <span class="txt"><b>${esc(c.titre || c.url)}</b>
         <small>${[nomSource(c.source), c.lieu].filter(Boolean).map(esc).join(' · ')}${c.le ? ' · gardée le ' + new Date(c.le).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }) : ''}</small>
         <small>${c.prix ? 'demandé <b>' + eur(c.prix) + '</b>' : ''}${c.argus_med ? ' → argus <b style="color:var(--accent)">' + eur(c.argus_med) + '</b>' : ''}${c.marge_prud ? ' · marge ' + eur(c.marge_prud) : ''}</small></span></div>
       <div style="display:flex;gap:8px;align-items:center">
         <select data-url="${esc(c.url)}" aria-label="Étape">${Object.entries(STATUTS).map(([k, t]) => `<option value="${k}" ${k === c.statut ? 'selected' : ''}>${t}</option>`).join('')}</select>
-        <a class="voir" style="flex:1;padding:8px" href="${surHttp(c.url) ? esc(c.url) : '#'}" target="_blank" rel="noopener">Ouvrir ↗</a></div></div>`).join('')
+        <a class="voir" style="flex:1;padding:8px" href="${surHttp(c.url) ? esc(c.url) : '#'}" target="_blank" rel="noopener">Ouvrir ↗</a></div>
+      ${c.statut === 'achete' ? `<button class="plus" data-fiche="${i}">Fiche pour le Dashboard matériel</button><div class="fiche-dash" hidden></div>` : ''}</div>`).join('')
       || '<p class="vide">Rien de gardé pour l’instant.</p>'}</div>`;
   scene.querySelectorAll('.puce[data-s]').forEach(b => b.onclick = () => { prisesFiltre = b.dataset.s; prises(); });
-  scene.querySelectorAll('select').forEach(s => s.onchange = () => api.statut(s.dataset.url, s.value));
+  scene.querySelectorAll('select[data-url]').forEach(s => s.onchange = async () => {
+    await api.statut(s.dataset.url, s.value);
+    if (s.value === 'achete' || s.closest('.bloc').querySelector('[data-fiche]')) prises();
+  });
+  scene.querySelectorAll('[data-fiche]').forEach(b => b.onclick = () => formulaireFiche(b.nextElementSibling, visibles[+b.dataset.fiche]));
+}
+// --- Acheté → fiche prête à coller dans le Dashboard matériel. Le radar n'écrit jamais dans le
+// dashboard (règle sync-matos) : on copie la fiche et la donne à Claude, qui l'ajoute après
+// confirmation. Champs et catégories du dashboard (inv_items, 2026-11-10).
+const CAT_DASHBOARD = { guitares: 'Guitares', basses: 'Guitares', pedales_racks: 'Pédales & Racks',
+  amplis: 'Amplis', accessoires: 'Accessoires', home_studio: 'Pédales & Racks',
+  claviers_synthes: 'Divers SDMC', dj: 'Divers SDMC' };
+function ficheDashboard(c, saisie) {
+  const auj = new Date().toISOString().slice(0, 10);
+  const valeur = c.argus_p25 || c.argus_med ? Math.round(c.argus_p25 || c.argus_med) : null;
+  return {
+    cat: CAT_DASHBOARD[c.famille] || 'Divers SDMC', marque: c.marque || '', modele: c.modele || '',
+    statut: saisie.statut, prixAchat: saisie.prix, frais: saisie.frais, dateAchat: auj,
+    vendeur: nomSource(c.source) || c.source || '', justificatif: c.url,
+    valeur, valeurDate: valeur ? auj : null,
+    valeurSource: valeur ? `SD Radar : ${c.argus_p25 ? 'bas de fourchette (p25)' : 'médiane'} sur ${c.n_annonces || '?'} annonces le ${auj}, à confirmer` : null,
+    note: `Acheté via SD Radar : « ${c.titre || c.url} »${c.lieu ? ' (' + c.lieu + ')' : ''}`,
+  };
+}
+function formulaireFiche(zone, c) {
+  if (!zone.hidden) { zone.hidden = true; return; }
+  zone.hidden = false;
+  zone.innerHTML = `<div style="display:grid;gap:8px;margin-top:4px">
+    <label>Prix payé (€) <input type="number" inputmode="decimal" data-k="prix" value="${Math.round(c.prix || 0)}"></label>
+    <label>Frais : port, droits (€) <input type="number" inputmode="decimal" data-k="frais" value="0"></label>
+    <label>Pour <select data-k="statut"><option value="PRO">SDMC (stock)</option><option value="PERSO">Moi (perso)</option></select></label>
+    <textarea readonly rows="7" style="width:100%;background:#14161a;color:#fff;border:2px solid #3a3e48;border-radius:8px;padding:8px;font:12px ui-monospace,monospace"></textarea>
+    <button class="plus" data-copier>Copier la fiche</button>
+    <small class="sous">Colle-la à Claude : « ajoute cette fiche au Dashboard matériel ». Rien n'est écrit sans ta confirmation.</small></div>`;
+  const champ = k => zone.querySelector(`[data-k="${k}"]`), texte = zone.querySelector('textarea');
+  const maj = () => {
+    const f = ficheDashboard(c, { prix: +champ('prix').value || 0, frais: +champ('frais').value || 0, statut: champ('statut').value });
+    texte.value = 'Fiche pour le Dashboard matériel (à confirmer avant écriture) :\n' + JSON.stringify(f, null, 1);
+  };
+  zone.querySelectorAll('[data-k]').forEach(x => x.oninput = maj);
+  maj();
+  zone.querySelector('[data-copier]').onclick = async e => {
+    try { await navigator.clipboard.writeText(texte.value); } catch (x) { texte.select(); document.execCommand('copy'); }
+    e.target.textContent = 'Copiée ✓';
+    setTimeout(() => { e.target.textContent = 'Copier la fiche'; }, 2000);
+  };
 }
 if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js');
 charger();
