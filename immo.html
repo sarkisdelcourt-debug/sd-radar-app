@@ -7,11 +7,12 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@400;600;700;800&display=swap">
 <style>
-  /* Style « Doux » : fond bleu clair, cartes blanches arrondies, jaune en accent. Daltonisme :
+  /* Style « Doux », version sombre (mêmes fonds que Matos), jaune en accent. Daltonisme :
      jamais rouge/vert pour distinguer ; chaque pile a une couleur vive ET son nom écrit, et les
      valeurs se lisent par une position sur une jauge. */
-  :root { --fond:#e6f1fd; --carte:#ffffff; --texte:#1b2737; --doux:#55657a; --ligne:#c9d8ea; --creux:#f3f8fe;
-          --jaune:#ffd23f; --jaune-fonce:#7a5a00; --prio:#1f5fd6; --tran:#b85c00; --disc:#7c3fe0; --ecar:#6b7889; }
+  :root { color-scheme:dark; --fond:#101114; --carte:#1c1e24; --texte:#f4f5f7; --doux:#b6bac4; --ligne:#3a3e48;
+          --creux:#14161a; --surface:#262931; --sur-couleur:#101114; --bande:#4d6688;
+          --jaune:#ffd23f; --jaune-fonce:#ffe48a; --prio:#7aa7ff; --tran:#ffa04d; --disc:#c29bff; --ecar:#9aa3b0; }
   * { box-sizing:border-box; }
   html, body { margin:0; background:var(--fond); color:var(--texte); font:16px/1.4 Nunito, system-ui, sans-serif; }
   body { padding-bottom:calc(76px + env(safe-area-inset-bottom)); }
@@ -42,9 +43,9 @@
   .piles::-webkit-scrollbar { display:none; }
   .pile { flex:none; display:flex; align-items:center; gap:6px; height:40px; padding:0 14px; border-radius:20px; border:2px solid var(--c);
           background:var(--carte); color:var(--texte); font-weight:800; font-size:14px; }
-  .pile .n { background:var(--c); color:#fff; border-radius:10px; padding:0 8px; font-size:13px; line-height:22px; }
-  .pile[aria-pressed="true"] { background:var(--c); color:#fff; }
-  .pile[aria-pressed="true"] .n { background:#fff; color:var(--c); }
+  .pile .n { background:var(--c); color:var(--sur-couleur); border-radius:10px; padding:0 8px; font-size:13px; line-height:22px; }
+  .pile[aria-pressed="true"] { background:var(--c); color:var(--sur-couleur); }
+  .pile[aria-pressed="true"] .n { background:var(--sur-couleur); color:var(--c); }
   .p-prioritaires { --c:var(--prio); } .p-a_trancher { --c:var(--tran); } .p-a_discuter { --c:var(--disc); } .p-ecartees { --c:var(--ecar); }
   .ajouter { width:100%; margin:6px 0 2px; min-height:46px; border-radius:16px; border:2px dashed var(--prio); background:transparent; color:var(--prio); font-weight:800; }
   main { padding:4px 14px 20px; display:flex; flex-direction:column; gap:12px; max-width:720px; margin:0 auto; }
@@ -57,15 +58,15 @@
   .carte h3 { margin:0; font-size:16px; line-height:1.25; word-break:break-word; }
   .carte .sous { font-size:14px; color:var(--doux); }
   .carte .prix { font-size:15px; font-weight:800; }
-  .etiq { display:inline-flex; align-items:center; gap:4px; font-size:12px; font-weight:800; padding:2px 8px; border-radius:8px; border:2px solid var(--c); color:var(--texte); background:#fff; }
-  .etiq.plein { background:var(--c); color:#fff; }
+  .etiq { display:inline-flex; align-items:center; gap:4px; font-size:12px; font-weight:800; padding:2px 8px; border-radius:8px; border:2px solid var(--c); color:var(--texte); background:var(--carte); }
+  .etiq.plein { background:var(--c); color:var(--sur-couleur); }
   .etiq.jaune { --c:var(--jaune); background:var(--jaune); color:#3b2b00; }
   .corps { padding:8px 12px 12px; display:flex; flex-direction:column; gap:8px; }
   .ligne-val { display:flex; justify-content:space-between; gap:8px; font-size:14px; flex-wrap:wrap; }
   .ligne-val b { font-weight:800; }
   .jauge { position:relative; height:28px; margin:2px 6px 0; }
   .jauge .rail { position:absolute; left:0; right:0; top:12px; height:4px; background:var(--ligne); border-radius:2px; }
-  .jauge .bande { position:absolute; top:9px; height:10px; background:#9cb3cf; border-radius:5px; }
+  .jauge .bande { position:absolute; top:9px; height:10px; background:var(--bande); border-radius:5px; }
   .jauge .med { position:absolute; top:5px; width:3px; height:18px; background:var(--texte); border-radius:2px; }
   .jauge .point { position:absolute; top:3px; width:22px; height:22px; margin-left:-11px; border-radius:11px; background:var(--jaune); border:3px solid var(--texte); }
   .jauge-leg { display:flex; justify-content:space-between; font-size:12px; color:var(--doux); margin:0 2px; }
@@ -73,18 +74,18 @@
   .sep { border:0; border-top:2px dotted var(--ligne); margin:2px 0; }
   .motifs { font-size:13px; color:var(--doux); }
   .actions { display:flex; gap:8px; }
-  .actions button { flex:1; min-height:44px; border-radius:14px; font-weight:800; font-size:14px; border:2px solid var(--texte); background:#fff; color:var(--texte); }
-  .actions .garder { background:var(--texte); color:#fff; }
+  .actions button { flex:1; min-height:44px; border-radius:14px; font-weight:800; font-size:14px; border:2px solid var(--texte); background:var(--surface); color:var(--texte); }
+  .actions .garder { background:var(--texte); color:var(--fond); }
   .actions .fait { outline:3px solid var(--jaune); }
   .motif-choix { display:none; flex-wrap:wrap; gap:6px; }
   .motif-choix.ouvert { display:flex; }
-  .motif-choix button { min-height:38px; padding:0 12px; border-radius:12px; border:2px solid var(--ligne); background:#fff; font-weight:700; font-size:13px; }
+  .motif-choix button { min-height:38px; padding:0 12px; border-radius:12px; border:2px solid var(--ligne); background:var(--surface); color:var(--texte); font-weight:700; font-size:13px; }
   .vide { text-align:center; color:var(--doux); padding:30px 10px; }
   /* fiche détail */
   #fiche { position:fixed; inset:0; background:var(--fond); z-index:20; overflow-y:auto; display:none; }
   #fiche.ouvert { display:block; }
   #fiche .barre { position:sticky; top:0; background:var(--fond); padding:10px 14px; display:flex; gap:10px; align-items:center; z-index:2; }
-  #fiche .barre button { min-height:44px; padding:0 14px; border-radius:14px; border:2px solid var(--texte); background:#fff; font-weight:800; }
+  #fiche .barre button { min-height:44px; padding:0 14px; border-radius:14px; border:2px solid var(--texte); background:var(--surface); color:var(--texte); font-weight:800; }
   #fiche .contenu { padding:0 14px 40px; display:flex; flex-direction:column; gap:12px; max-width:720px; margin:0 auto; }
   .bloc { background:var(--carte); border-radius:18px; padding:14px; display:flex; flex-direction:column; gap:8px; }
   .bloc h2 { margin:0; font-size:18px; }
@@ -105,14 +106,14 @@
   ul.q { margin:0; padding-left:20px; } ul.q li { margin:4px 0; }
   a.lien { color:var(--prio); font-weight:800; }
   /* sous-onglets */
-  nav.bas { position:fixed; left:0; right:0; bottom:0; background:#fff; display:flex; justify-content:space-around; padding:6px 6px calc(8px + env(safe-area-inset-bottom)); box-shadow:0 -1px 0 var(--ligne); z-index:6; }
+  nav.bas { position:fixed; left:0; right:0; bottom:0; background:var(--carte); display:flex; justify-content:space-around; padding:6px 6px calc(8px + env(safe-area-inset-bottom)); box-shadow:0 -1px 0 var(--ligne); z-index:6; }
   nav.bas button { flex:1; border:0; background:transparent; padding:10px 4px; font-weight:800; font-size:14px; color:var(--doux); border-radius:12px; }
   nav.bas button[aria-pressed="true"] { background:var(--jaune); color:#3b2b00; }
   .champ { display:flex; flex-direction:column; gap:4px; font-weight:700; font-size:14px; }
-  .champ input, .champ textarea, .champ select { border:2px solid var(--ligne); border-radius:12px; padding:10px; background:#fff; color:var(--texte); font-weight:600; }
-  .bouton { min-height:46px; border-radius:14px; border:2px solid var(--texte); background:var(--texte); color:#fff; font-weight:800; padding:0 16px; }
-  .bouton.clair { background:#fff; color:var(--texte); }
-  #toast { position:fixed; left:14px; right:14px; bottom:calc(84px + env(safe-area-inset-bottom)); background:var(--texte); color:#fff; border-radius:14px; padding:12px 14px; font-weight:700; display:none; z-index:30; }
+  .champ input, .champ textarea, .champ select { border:2px solid var(--ligne); border-radius:12px; padding:10px; background:var(--creux); color:var(--texte); font-weight:600; }
+  .bouton { min-height:46px; border-radius:14px; border:2px solid var(--texte); background:var(--texte); color:var(--fond); font-weight:800; padding:0 16px; }
+  .bouton.clair { background:var(--surface); color:var(--texte); }
+  #toast { position:fixed; left:14px; right:14px; bottom:calc(84px + env(safe-area-inset-bottom)); background:var(--texte); color:var(--fond); border-radius:14px; padding:12px 14px; font-weight:700; display:none; z-index:30; }
   @media (min-width:900px) { main, .haut-inner, #fiche .contenu { max-width:900px; } .liste-cartes { display:grid; grid-template-columns:1fr 1fr; gap:12px; } }
 </style>
 </head>
@@ -371,13 +372,13 @@ function graphique(a) {
   const e = a.calcul.esperance_ans;
   const pas = maxY > 300000 ? 100000 : 50000;
   let grille = '';
-  for (let v = 0; v <= maxY; v += pas) grille += `<line x1="${g}" x2="${W - 10}" y1="${y(v)}" y2="${y(v)}" stroke="#c9d8ea"/><text x="${g - 5}" y="${y(v) + 4}" text-anchor="end" font-size="11" fill="#55657a">${Math.round(v / 1000)} k€</text>`;
-  for (let an = 0; an <= 30; an += 10) grille += `<text x="${x(an)}" y="${H - 6}" text-anchor="${an === 30 ? 'end' : an === 0 ? 'start' : 'middle'}" font-size="11" fill="#55657a">${an} ans</text>`;
+  for (let v = 0; v <= maxY; v += pas) grille += `<line x1="${g}" x2="${W - 10}" y1="${y(v)}" y2="${y(v)}" stroke="#3a3e48"/><text x="${g - 5}" y="${y(v) + 4}" text-anchor="end" font-size="11" fill="#b6bac4">${Math.round(v / 1000)} k€</text>`;
+  for (let an = 0; an <= 30; an += 10) grille += `<text x="${x(an)}" y="${H - 6}" text-anchor="${an === 30 ? 'end' : an === 0 ? 'start' : 'middle'}" font-size="11" fill="#b6bac4">${an} ans</text>`;
   return `<svg class="graph" viewBox="0 0 ${W} ${H}" role="img" aria-label="Argent sorti cumulé et produit de la revente selon la date de libération">${grille}
-    <line x1="${x(e)}" x2="${x(e)}" y1="8" y2="${H - b}" stroke="#1b2737" stroke-width="2" stroke-dasharray="2 4"/>
-    <text x="${Math.min(x(e) + 4, W - 120)}" y="20" font-size="11" fill="#1b2737">espérance ${ans(e)}</text>
-    <path d="${ligne('argent_sorti')}" fill="none" stroke="#1f5fd6" stroke-width="3"/>
-    <path d="${ligne('produit_net')}" fill="none" stroke="#e07b12" stroke-width="4" stroke-dasharray="10 6"/></svg>
+    <line x1="${x(e)}" x2="${x(e)}" y1="8" y2="${H - b}" stroke="#f4f5f7" stroke-width="2" stroke-dasharray="2 4"/>
+    <text x="${Math.min(x(e) + 4, W - 120)}" y="20" font-size="11" fill="#f4f5f7">espérance ${ans(e)}</text>
+    <path d="${ligne('argent_sorti')}" fill="none" stroke="#7aa7ff" stroke-width="3"/>
+    <path d="${ligne('produit_net')}" fill="none" stroke="#ffa04d" stroke-width="4" stroke-dasharray="10 6"/></svg>
     <div class="leg"><span><i class="trait"></i> argent sorti cumulé</span><span><i class="trait tirets"></i> produit net de la revente</span><span>Tant que le trait plein reste sous les tirets, l'opération gagne de l'argent.</span></div>`;
 }
 // Bloc « valeur de marché » de la fiche : DVF (N1, N2) ou annonces saisies (N3). Les Écartées
@@ -403,9 +404,9 @@ function carteComparables(a) {
   const r = Math.max(a.marche.rayon_km || 0, loin, 0.5), S = 220, k = (S / 2 - 14) / r;
   const px = x => S / 2 + (x.lon - lon0) * 111 * Math.cos(lat0 * Math.PI / 180) * k, py = x => S / 2 - (x.lat - lat0) * 111 * k;
   return `<svg viewBox="0 0 ${S} ${S}" style="width:min(100%,280px)" role="img" aria-label="Position des ventes comparables">
-    <circle cx="${S / 2}" cy="${S / 2}" r="${S / 2 - 12}" fill="#f3f8fe" stroke="#c9d8ea" stroke-width="2"/>
-    ${c.map((x, i) => `<g><circle cx="${px(x)}" cy="${py(x)}" r="9" fill="#ffd23f" stroke="#1b2737" stroke-width="2"/><text x="${px(x)}" y="${py(x) + 4}" font-size="10" text-anchor="middle" font-weight="800">${i + 1}</text></g>`).join('')}
-    <text x="${S / 2}" y="${S - 2}" font-size="11" text-anchor="middle" fill="#55657a">rayon ${r} km</text></svg>`;
+    <circle cx="${S / 2}" cy="${S / 2}" r="${S / 2 - 12}" fill="#14161a" stroke="#3a3e48" stroke-width="2"/>
+    ${c.map((x, i) => `<g><circle cx="${px(x)}" cy="${py(x)}" r="9" fill="#ffd23f" stroke="#f4f5f7" stroke-width="2"/><text x="${px(x)}" y="${py(x) + 4}" font-size="10" text-anchor="middle" font-weight="800" fill="#101114">${i + 1}</text></g>`).join('')}
+    <text x="${S / 2}" y="${S - 2}" font-size="11" text-anchor="middle" fill="#b6bac4">rayon ${r} km</text></svg>`;
 }
 function ouvrirFiche(id) {
   const a = D.annonces.find(x => x.id === id); if (!a) return;
@@ -545,9 +546,9 @@ function afficherPortefeuille(r, n95, n, modeType) {
   const x = a => g + a / (ev.length - 1) * (W - g - 10), y = v => H - b - (v - lo) / (hi - lo) * (H - b - 10);
   const zone = ev.map((p, i) => `${i ? 'L' : 'M'}${x(p.annee)},${y(p.haut)}`).join(' ') + ' ' + [...ev].reverse().map(p => `L${x(p.annee)},${y(p.bas)}`).join(' ') + ' Z';
   const med = ev.map((p, i) => `${i ? 'L' : 'M'}${x(p.annee)},${y(p.median)}`).join(' ');
-  let axes = `<line x1="${g}" x2="${W - 10}" y1="${y(0)}" y2="${y(0)}" stroke="#1b2737" stroke-width="1.5"/><text x="${g - 4}" y="${y(0) + 4}" font-size="11" text-anchor="end" fill="#1b2737">0 €</text>
-    <text x="${g - 4}" y="${y(hi) + 10}" font-size="11" text-anchor="end" fill="#55657a">${Math.round(hi / 1000)} k€</text>`;
-  for (let a = 0; a < ev.length; a += 5) axes += `<text x="${x(a)}" y="${H - 6}" font-size="11" text-anchor="${a ? 'middle' : 'start'}" fill="#55657a">${a} ans</text>`;
+  let axes = `<line x1="${g}" x2="${W - 10}" y1="${y(0)}" y2="${y(0)}" stroke="#f4f5f7" stroke-width="1.5"/><text x="${g - 4}" y="${y(0) + 4}" font-size="11" text-anchor="end" fill="#f4f5f7">0 €</text>
+    <text x="${g - 4}" y="${y(hi) + 10}" font-size="11" text-anchor="end" fill="#b6bac4">${Math.round(hi / 1000)} k€</text>`;
+  for (let a = 0; a < ev.length; a += 5) axes += `<text x="${x(a)}" y="${H - 6}" font-size="11" text-anchor="${a ? 'middle' : 'start'}" fill="#b6bac4">${a} ans</text>`;
   const vi = r.eventail_viagers[r.eventail_viagers.length - 1];
   $('p-resultat').innerHTML = `<div class="bloc"><h2>Résultat (${n} viager${n > 1 ? 's' : ''})</h2>
     ${Object.entries(r.probabilite_manque).map(([h, p]) => `<div><div class="ligne-val"><span>Risque de manquer de trésorerie d'ici ${h} ans</span><b>${Math.round(p * 100)} %</b></div>${barre(p)}</div>`).join('')}
@@ -557,8 +558,8 @@ function afficherPortefeuille(r, n95, n, modeType) {
     <div class="ligne-val"><span>Viagers ${modeType ? 'de ce type' : 'comme le premier gardé'} tenables à ${Math.round(P.niveau_de_surete * 100)} %</span><b>${n95}</b></div></div>
     <div class="bloc"><h2>Boule de neige : trésorerie</h2>
     <svg class="graph" viewBox="0 0 ${W} ${H}" role="img" aria-label="Éventail de la trésorerie année par année">${axes}
-      <path d="${zone}" fill="#9cb3cf" opacity=".6"/><path d="${med}" fill="none" stroke="#1f5fd6" stroke-width="3"/></svg>
-    <div class="leg"><span><i class="trait"></i> cas médian</span><span><i style="display:inline-block;width:22px;height:12px;background:#9cb3cf"></i> 8 cas sur 10 dans cette bande (bas / haut)</span></div>
+      <path d="${zone}" fill="#4d6688" opacity=".6"/><path d="${med}" fill="none" stroke="#7aa7ff" stroke-width="3"/></svg>
+    <div class="leg"><span><i class="trait"></i> cas médian</span><span><i style="display:inline-block;width:22px;height:12px;background:#4d6688"></i> 8 cas sur 10 dans cette bande (bas / haut)</span></div>
     <div>Dans ${ev.length - 1} ans : trésorerie entre ${eur(ev[ev.length - 1].bas)} et ${eur(ev[ev.length - 1].haut)} (médiane ${eur(ev[ev.length - 1].median)}) ; viagers détenus entre ${Math.round(vi.bas)} et ${Math.round(vi.haut)} (médiane ${Math.round(vi.median)}).</div>
     <span class="petit">${P.tirages.toLocaleString('fr-FR')} tirages, graine fixe : le même calcul donne le même résultat. Nombre tenable calculé sur ${Math.min(P.tirages, 2000).toLocaleString('fr-FR')} tirages.</span></div>`;
 }
