@@ -20,5 +20,10 @@ hors réseau, `manifest.json`). Publiée telle quelle sur GitHub Pages depuis le
   sur la carte (étape Cartes) ; bloc « Depuis ta liste à surveiller » dans le Chasseur (objets
   `surveiller` sans fiche, à valider) ; dans Mes prises à l'étape Acheté, « Fiche pour le Dashboard
   matériel » à copier et donner à Claude. Le radar n'écrit jamais dans le dashboard.
+- **Calcul Japon** (`japon.html`, menu « ··· ») : plafond de mise en yens tous frais compris. On
+  y colle le lien d'une annonce (FromJapan, Yahoo, Buyee, ZenMarket, Mercari, ou le texte partagé
+  par l'appli : le titre est repris) : la page ne lit pas l'annonce (ces sites refusent les
+  lecteurs automatiques), elle reconnaît l'objet et « Garder dans Mes prises » en fait une prise
+  suivie (source Yahoo Japon / Mercari Japon, mise ou plafond, argus, marge).
 - Les décisions prises hors ligne attendent dans une file (`sdradar_file`) et partent au retour du
   réseau ; elles sont réappliquées sur l'état reçu du serveur pour ne pas revenir dans la pile.

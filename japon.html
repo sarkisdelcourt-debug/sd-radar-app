@@ -32,6 +32,12 @@
   <p class="aide">Jusqu'à combien miser (en yens) sur Yahoo Japon via FromJapan, tous frais compris.
   Les frais sont des hypothèses : corrige-les avec ta vraie facture.</p>
 
+  <label>Lien de l'annonce (FromJapan, Yahoo, Buyee, ZenMarket, Mercari) — facultatif</label>
+  <input id="lien" type="text" inputmode="url" placeholder="colle le lien, ou le texte partagé par l'appli" autocomplete="off">
+  <div id="lienInfo" class="aide" style="margin:6px 0 0"></div>
+  <label>Titre (facultatif)</label>
+  <input id="titre" placeholder="ex. Strat 1976 naturelle, manche érable">
+
   <label>Modèle (cherche dans le catalogue)</label>
   <input id="q" placeholder="ex. Stratocaster CBS 1976, Klon Centaur…" autocomplete="off">
   <div id="liste"></div>
@@ -89,6 +95,36 @@ async function chercherModeles(q) {
 const eur = n => Math.round(n).toLocaleString('fr-FR') + ' €';
 const yen = n => Math.round(n).toLocaleString('fr-FR') + ' ¥';
 let cat = 'guitare';
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+// --- Lien collé : on ne lit pas la page (FromJapan, Yahoo et Buyee refusent les lecteurs
+// automatiques), on garde le lien et l'objet, et le calcul en fait une prise à suivre.
+let lien = null, choisi = null, dernier = null;
+const PLACES = { yahoo: 'Yahoo Enchères', mercari: 'Mercari', autre: 'Lien non reconnu (gardé tel quel)' };
+$('lien').oninput = () => {
+  lien = SDCalcul.lienJapon($('lien').value);
+  if (lien && lien.titre && !$('titre').value) $('titre').value = lien.titre;
+  $('lienInfo').innerHTML = !$('lien').value.trim() ? ''
+    : !lien ? 'Pas de lien http(s) dans ce texte.'
+    : `<b>${PLACES[lien.place]}</b>${lien.id ? ' · objet ' + esc(lien.id) : ''}${lien.yahoo ? ` · <a href="${esc(lien.yahoo)}" target="_blank" rel="noopener" style="color:var(--doux)">page Yahoo ↗</a>` : ''}`;
+  if ($('res').innerHTML) $('go').onclick();
+};
+// Même cache et même file hors ligne que l'appli (index.html) : la prise apparaît tout de suite
+// dans « Mes prises » et part au serveur dès qu'il y a du réseau.
+function lireCle(cle, defaut) { try { return JSON.parse(localStorage.getItem(cle)) ?? defaut; } catch (e) { return defaut; } }
+function ecrireCle(cle, v) { try { localStorage.setItem(cle, JSON.stringify(v)); } catch (e) {} }
+async function garder(carte) {
+  if (!CFG) {
+    const r = await fetch('/api/swipe', { method: 'POST', body: JSON.stringify({ url: carte.url, decision: 'garder', motif: null, carte }) });
+    if (!r.ok) throw new Error('serveur ' + r.status);
+    return 'enregistrée';
+  }
+  const etat = lireCle('sdradar_cache', null) || { cartes: [], swipes: {}, total: 0 };
+  etat.swipes[carte.url] = { decision: 'garder', motif: null, le: new Date().toISOString(), statut: 'a_contacter', carte };
+  ecrireCle('sdradar_cache', etat);
+  const args = { p_url: carte.url, p_decision: 'garder', p_motif: null, p_carte: carte };
+  try { await rpc('radar_swipe', args); return 'enregistrée'; }
+  catch (e) { ecrireCle('sdradar_file', [...lireCle('sdradar_file', []), { nom: 'radar_swipe', args }]); return 'gardée hors ligne, envoyée au retour du réseau'; }
+}
 const PORT = { guitares: 'guitare', basses: 'basse', pedales_racks: 'pedale', amplis: 'ampli_combo', claviers_synthes: 'clavier_61' };
 let tmp;
 $('q').oninput = () => { clearTimeout(tmp); tmp = setTimeout(async () => {
@@ -99,7 +135,7 @@ $('q').oninput = () => { clearTimeout(tmp); tmp = setTimeout(async () => {
       <small>· argus ${m.mediane ? eur(m.mediane) : '?'} (${m.n || 0} annonces)</small></div>`).join('')
       || '<div><small>Aucun modèle</small></div>';
     $('liste').querySelectorAll('div[data-i]').forEach(d => d.onclick = () => {
-      const m = r[d.dataset.i]; $('q').value = m.marque + ' ' + m.modele; $('liste').innerHTML = '';
+      const m = r[d.dataset.i]; choisi = m; $('q').value = m.marque + ' ' + m.modele; $('liste').innerHTML = '';
       if (m.mediane) $('argus').value = Math.round(m.mediane);
       if (m.p25) $('p25').value = Math.round(m.p25);
       if (PORT[m.famille]) $('famille').value = m.famille;
@@ -129,7 +165,18 @@ $('go').onclick = async () => {
       : r.mise.niveau === 'a_voir' ? '△ À vérifier (marge seulement au cas médian)' : '✕ Pas rentable'}</div>
     <div>Marge prudente ${r.mise.marge_prudente_eur == null ? '?' : eur(r.mise.marge_prudente_eur)}
       · médiane ${eur(r.mise.marge_mediane_eur)}</div>${c(r.mise.couts)}</div>`;
+  dernier = r;
+  if (lien) h += `<button id="garder">Garder dans Mes prises</button><p id="garde" class="aide" style="margin-top:8px"></p>`;
   $('res').innerHTML = h;
+  if (lien) $('garder').onclick = async () => {
+    // modèle choisi dans le catalogue, avec l'argus tel qu'il est dans les cases (corrigé à la main ou non)
+    const modele = { ...(choisi || {}), famille: $('famille').value,
+      mediane: Number($('argus').value) || null, p25: Number($('p25').value) || null };
+    const carte = SDCalcul.carteJapon(lien, $('titre').value, modele, dernier, $('mise').value);
+    $('garder').disabled = true;
+    try { $('garde').textContent = 'Prise ' + await garder(carte) + ' : elle est dans « Mes prises ».'; }
+    catch (e) { $('garder').disabled = false; $('garde').textContent = 'Échec de l’enregistrement : réessaie.'; }
+  };
 };
 </script>
 </body>

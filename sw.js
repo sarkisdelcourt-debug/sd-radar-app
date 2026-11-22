@@ -2,7 +2,7 @@
 // l'appli s'ouvre sans réseau ; les données (Supabase, photos) ne sont jamais mises en cache.
 // Réseau d'abord, cache en secours : une nouvelle version de la page arrive dès qu'il y a du réseau.
 const CACHE = 'sd-radar-coquille-v3';
-const COQUILLE = ['./', './index.html', './japon.html', './calcul.js', './manifest.json', './immo.html', './immo.js'];
+const COQUILLE = ['./', './index.html', './japon.html', './calcul.js', './manifest.json'];
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(COQUILLE)).then(() => self.skipWaiting()));
 });

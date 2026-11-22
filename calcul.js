@@ -128,7 +128,60 @@
     return sortie;
   }
 
-  const api = { calcul, evaluerAffaire, couts, plafond };
+  // Lien collé (ou texte partagé par une appli : « titre https://… ») → annonce reconnue.
+  // FromJapan, Buyee et Yahoo refusent la lecture automatique (robots.txt et 403, 2026-11-22) :
+  // on ne lit pas la page, on garde le lien et l'identifiant de l'objet. Testé par
+  // tests/test_lien_japon.py.
+  const ID_YAHOO = /^[a-z]?\d{9,11}$/i;
+  function lienJapon(texte) {
+    const trouve = String(texte || '').match(/https?:\/\/[^\s<>"']+/i);
+    if (!trouve) return null;
+    const url = trouve[0];
+    let u;
+    try { u = new URL(url); } catch (e) { return null; }
+    const titre = String(texte).replace(url, ' ').replace(/\s+/g, ' ').trim();
+    const hote = u.hostname.toLowerCase(), chemin = u.pathname;
+    let place = 'autre', id = null;
+    const mercari = chemin.match(/\/(m\d{9,12})(?:\/|$)/i);
+    if (hote.endsWith('mercari.com') || /mercari/i.test(chemin)) {
+      if (mercari) { place = 'mercari'; id = mercari[1]; }
+    } else if (hote.endsWith('auctions.yahoo.co.jp')) {
+      const x = chemin.match(/\/auction\/([a-z]?\d{9,11})(?:\/|$)/i);
+      if (x) { place = 'yahoo'; id = x[1]; }
+    } else if (hote.endsWith('zenmarket.jp')) {
+      const x = u.searchParams.get('itemCode');
+      if (x && ID_YAHOO.test(x)) { place = 'yahoo'; id = x; }
+    } else if (hote.endsWith('fromjapan.co.jp') || hote.endsWith('buyee.jp')) {
+      const x = chemin.match(/\/([a-z]?\d{9,11})(?:\/|$)/i);
+      if (x) { place = 'yahoo'; id = x[1]; }
+    }
+    return { url, titre, place, id,
+      yahoo: place === 'yahoo' ? 'https://page.auctions.yahoo.co.jp/jp/auction/' + id : null };
+  }
+
+  // Carte « Mes prises » d'une annonce japonaise : mêmes champs que les cartes du radar (titre,
+  // prix suivi en €, argus, marge prudente, niveau), plus le calcul Japon. Prix suivi : la mise
+  // envisagée, sinon le plafond conseillé.
+  function carteJapon(lien, titre, modele, r, miseYen) {
+    const m = modele || {}, mise = r && r.mise, pl = r && r.plafond;
+    const nom = [m.marque, m.modele].filter(Boolean).join(' ');
+    const yenMise = miseYen === '' || miseYen === null || miseYen === undefined ? null : Number(miseYen);
+    return {
+      titre: String(titre || '').trim() || lien.titre || nom || lien.url,
+      url: lien.url, source: lien.place === 'mercari' ? 'mercari_jp' : 'yahoo_jp',
+      lieu: 'Japon', pays: 'JP',
+      marque: m.marque || '', modele: m.modele || '', famille: m.famille || '',
+      prix: Math.round(mise ? mise.mise_eur : pl ? pl.mise_eur : 0),
+      argus_med: m.mediane || null, argus_p25: m.p25 || null, n_annonces: m.n || 0,
+      marge_prud: mise ? mise.marge_prudente_eur : pl ? pl.marge_prudente_eur : null,
+      marge_med: mise ? mise.marge_mediane_eur : null,
+      niveau: mise ? mise.niveau : pl ? 'solide' : 'non',
+      japon: { id: lien.id, place: lien.place, mise_yen: yenMise,
+        plafond_yen: pl ? pl.mise_yen : null, taux_yen: r ? r.taux_yen : null, yahoo: lien.yahoo },
+    };
+  }
+
+  const api = { calcul, evaluerAffaire, couts, plafond, lienJapon, carteJapon };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else racine.SDCalcul = api;
 })(typeof window !== 'undefined' ? window : globalThis);
