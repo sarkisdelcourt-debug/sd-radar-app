@@ -1,0 +1,801 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>SD Radar · Immo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@400;600;700;800&display=swap">
+<style>
+  /* Style « Doux » : fond bleu clair, cartes blanches arrondies, jaune en accent. Daltonisme :
+     jamais rouge/vert pour distinguer ; chaque pile a une couleur vive ET son nom écrit, et les
+     valeurs se lisent par une position sur une jauge. */
+  :root { --fond:#e6f1fd; --carte:#ffffff; --texte:#1b2737; --doux:#55657a; --ligne:#c9d8ea; --creux:#f3f8fe;
+          --jaune:#ffd23f; --jaune-fonce:#7a5a00; --prio:#1f5fd6; --tran:#b85c00; --disc:#7c3fe0; --ecar:#6b7889; }
+  * { box-sizing:border-box; }
+  html, body { margin:0; background:var(--fond); color:var(--texte); font:16px/1.4 Nunito, system-ui, sans-serif; }
+  body { padding-bottom:calc(76px + env(safe-area-inset-bottom)); }
+  h1, h2, h3, .titre-app { font-family:Fredoka, Nunito, sans-serif; font-weight:600; }
+  button, input, select, textarea { font:inherit; }
+  button { cursor:pointer; }
+  .haut { background:var(--fond); padding:10px 14px 6px; }
+  .titre-app { font-size:20px; display:flex; justify-content:space-between; align-items:center; }
+  .titre-app small { font-family:Nunito; font-size:13px; color:var(--doux); font-weight:600; }
+  /* critères */
+  .criteres { background:var(--carte); border-radius:18px; margin:8px 0; box-shadow:0 1px 0 var(--ligne); }
+  .criteres > button { width:100%; display:flex; justify-content:space-between; align-items:center; gap:8px; padding:12px 14px;
+                       border:0; background:transparent; color:var(--texte); text-align:left; font-weight:700; }
+  .criteres .resume { font-weight:600; color:var(--doux); font-size:13px; }
+  .compteur { font-family:Fredoka; font-size:18px; white-space:nowrap; }
+  .reglages-crit { display:none; padding:0 14px 14px; gap:12px; flex-direction:column; }
+  .reglages-crit.ouvert { display:flex; }
+  .curseur { display:grid; grid-template-columns:1fr auto; gap:2px 10px; align-items:center; }
+  .curseur label { font-weight:700; font-size:14px; }
+  .curseur output { font-family:Fredoka; font-size:16px; }
+  .curseur input[type=range] { grid-column:1 / 3; width:100%; accent-color:var(--prio); height:28px; }
+  .curseur .elim { grid-column:1 / 3; font-size:12px; color:var(--doux); }
+  .cases { display:flex; gap:8px; flex-wrap:wrap; }
+  .cases label { display:flex; align-items:center; gap:6px; padding:6px 10px; border:2px solid var(--ligne); border-radius:12px; font-size:14px; font-weight:700; }
+  .lien-defaut { align-self:flex-start; border:0; background:transparent; color:var(--prio); font-weight:800; text-decoration:underline; padding:4px 0; }
+  /* piles */
+  .piles { display:flex; gap:8px; overflow-x:auto; padding:4px 0 6px; scrollbar-width:none; }
+  .piles::-webkit-scrollbar { display:none; }
+  .pile { flex:none; display:flex; align-items:center; gap:6px; height:40px; padding:0 14px; border-radius:20px; border:2px solid var(--c);
+          background:var(--carte); color:var(--texte); font-weight:800; font-size:14px; }
+  .pile .n { background:var(--c); color:#fff; border-radius:10px; padding:0 8px; font-size:13px; line-height:22px; }
+  .pile[aria-pressed="true"] { background:var(--c); color:#fff; }
+  .pile[aria-pressed="true"] .n { background:#fff; color:var(--c); }
+  .p-prioritaires { --c:var(--prio); } .p-a_trancher { --c:var(--tran); } .p-a_discuter { --c:var(--disc); } .p-ecartees { --c:var(--ecar); }
+  .ajouter { width:100%; margin:6px 0 2px; min-height:46px; border-radius:16px; border:2px dashed var(--prio); background:transparent; color:var(--prio); font-weight:800; }
+  main { padding:4px 14px 20px; display:flex; flex-direction:column; gap:12px; max-width:720px; margin:0 auto; }
+  .haut-inner { max-width:720px; margin:0 auto; }
+  /* carte d'annonce */
+  .carte { background:var(--carte); border-radius:20px; overflow:hidden; box-shadow:0 2px 0 var(--ligne); border-left:8px solid var(--c); }
+  .carte .tete { display:flex; gap:12px; padding:12px 12px 0; cursor:pointer; }
+  .carte .vignette { width:84px; height:84px; border-radius:14px; background:var(--creux) center/cover no-repeat; flex:none; display:flex; align-items:center; justify-content:center; color:var(--doux); font-size:12px; text-align:center; }
+  .carte .txt { flex:1; min-width:0; display:flex; flex-direction:column; gap:3px; }
+  .carte h3 { margin:0; font-size:16px; line-height:1.25; word-break:break-word; }
+  .carte .sous { font-size:14px; color:var(--doux); }
+  .carte .prix { font-size:15px; font-weight:800; }
+  .etiq { display:inline-flex; align-items:center; gap:4px; font-size:12px; font-weight:800; padding:2px 8px; border-radius:8px; border:2px solid var(--c); color:var(--texte); background:#fff; }
+  .etiq.plein { background:var(--c); color:#fff; }
+  .etiq.jaune { --c:var(--jaune); background:var(--jaune); color:#3b2b00; }
+  .corps { padding:8px 12px 12px; display:flex; flex-direction:column; gap:8px; }
+  .ligne-val { display:flex; justify-content:space-between; gap:8px; font-size:14px; flex-wrap:wrap; }
+  .ligne-val b { font-weight:800; }
+  .jauge { position:relative; height:28px; margin:2px 6px 0; }
+  .jauge .rail { position:absolute; left:0; right:0; top:12px; height:4px; background:var(--ligne); border-radius:2px; }
+  .jauge .bande { position:absolute; top:9px; height:10px; background:#9cb3cf; border-radius:5px; }
+  .jauge .med { position:absolute; top:5px; width:3px; height:18px; background:var(--texte); border-radius:2px; }
+  .jauge .point { position:absolute; top:3px; width:22px; height:22px; margin-left:-11px; border-radius:11px; background:var(--jaune); border:3px solid var(--texte); }
+  .jauge-leg { display:flex; justify-content:space-between; font-size:12px; color:var(--doux); margin:0 2px; }
+  .verdict { font-weight:800; }
+  .sep { border:0; border-top:2px dotted var(--ligne); margin:2px 0; }
+  .motifs { font-size:13px; color:var(--doux); }
+  .actions { display:flex; gap:8px; }
+  .actions button { flex:1; min-height:44px; border-radius:14px; font-weight:800; font-size:14px; border:2px solid var(--texte); background:#fff; color:var(--texte); }
+  .actions .garder { background:var(--texte); color:#fff; }
+  .actions .fait { outline:3px solid var(--jaune); }
+  .motif-choix { display:none; flex-wrap:wrap; gap:6px; }
+  .motif-choix.ouvert { display:flex; }
+  .motif-choix button { min-height:38px; padding:0 12px; border-radius:12px; border:2px solid var(--ligne); background:#fff; font-weight:700; font-size:13px; }
+  .vide { text-align:center; color:var(--doux); padding:30px 10px; }
+  /* fiche détail */
+  #fiche { position:fixed; inset:0; background:var(--fond); z-index:20; overflow-y:auto; display:none; }
+  #fiche.ouvert { display:block; }
+  #fiche .barre { position:sticky; top:0; background:var(--fond); padding:10px 14px; display:flex; gap:10px; align-items:center; z-index:2; }
+  #fiche .barre button { min-height:44px; padding:0 14px; border-radius:14px; border:2px solid var(--texte); background:#fff; font-weight:800; }
+  #fiche .contenu { padding:0 14px 40px; display:flex; flex-direction:column; gap:12px; max-width:720px; margin:0 auto; }
+  .bloc { background:var(--carte); border-radius:18px; padding:14px; display:flex; flex-direction:column; gap:8px; }
+  .bloc h2 { margin:0; font-size:18px; }
+  table { width:100%; border-collapse:collapse; font-size:14px; }
+  td, th { padding:6px 4px; border-bottom:1px solid var(--ligne); text-align:left; vertical-align:top; }
+  td.n, th.n { text-align:right; white-space:nowrap; font-variant-numeric:tabular-nums; }
+  tr.total td { font-weight:800; border-bottom:0; }
+  .petit { font-size:12px; color:var(--doux); }
+  table.serre { font-size:13px; } table.serre td, table.serre th { padding:5px 2px; }
+  #fiche .barre button { white-space:nowrap; }
+  .graph { width:100%; height:auto; }
+  .leg { display:flex; gap:14px; flex-wrap:wrap; font-size:13px; }
+  .leg span { display:inline-flex; align-items:center; gap:6px; }
+  .trait { display:inline-block; width:26px; height:0; border-top:4px solid var(--prio); }
+  .trait.tirets { border-top:4px dashed var(--tran); }
+  .barre-score { height:12px; background:var(--creux); border-radius:6px; overflow:hidden; border:1px solid var(--ligne); }
+  .barre-score > div { height:100%; background:var(--prio); }
+  ul.q { margin:0; padding-left:20px; } ul.q li { margin:4px 0; }
+  a.lien { color:var(--prio); font-weight:800; }
+  /* sous-onglets */
+  nav.bas { position:fixed; left:0; right:0; bottom:0; background:#fff; display:flex; justify-content:space-around; padding:6px 6px calc(8px + env(safe-area-inset-bottom)); box-shadow:0 -1px 0 var(--ligne); z-index:6; }
+  nav.bas button { flex:1; border:0; background:transparent; padding:10px 4px; font-weight:800; font-size:14px; color:var(--doux); border-radius:12px; }
+  nav.bas button[aria-pressed="true"] { background:var(--jaune); color:#3b2b00; }
+  .champ { display:flex; flex-direction:column; gap:4px; font-weight:700; font-size:14px; }
+  .champ input, .champ textarea, .champ select { border:2px solid var(--ligne); border-radius:12px; padding:10px; background:#fff; color:var(--texte); font-weight:600; }
+  .bouton { min-height:46px; border-radius:14px; border:2px solid var(--texte); background:var(--texte); color:#fff; font-weight:800; padding:0 16px; }
+  .bouton.clair { background:#fff; color:var(--texte); }
+  #toast { position:fixed; left:14px; right:14px; bottom:calc(84px + env(safe-area-inset-bottom)); background:var(--texte); color:#fff; border-radius:14px; padding:12px 14px; font-weight:700; display:none; z-index:30; }
+  @media (min-width:900px) { main, .haut-inner, #fiche .contenu { max-width:900px; } .liste-cartes { display:grid; grid-template-columns:1fr 1fr; gap:12px; } }
+</style>
+</head>
+<body>
+<div class="haut"><div class="haut-inner">
+  <div class="titre-app"><span id="titre">Immo · viager</span><small id="etat-donnees"></small></div>
+  <div id="zone-annonces">
+    <div class="criteres">
+      <button id="b-criteres" aria-expanded="false"><span><span>Critères ▾</span><br><span class="resume" id="resume"></span></span>
+        <span class="compteur" id="compteur"></span></button>
+      <div class="reglages-crit" id="reglages-crit"></div>
+    </div>
+    <div class="piles" id="piles" role="tablist" aria-label="Piles"></div>
+  </div>
+</div></div>
+<main id="main"></main>
+<div id="fiche" role="dialog" aria-label="Fiche détaillée"><div class="barre"><button id="f-fermer">← Retour</button><b id="f-titre"></b></div><div class="contenu" id="f-contenu"></div></div>
+<nav class="bas" aria-label="Sous-onglets Immo">
+  <button data-vue="annonces" aria-pressed="true">Annonces</button>
+  <button data-vue="portefeuille" aria-pressed="false">Portefeuille</button>
+  <button data-vue="suivi" aria-pressed="false">Suivi</button>
+  <button data-vue="chasseur" aria-pressed="false">Chasseur</button>
+  <button data-vue="reglages" aria-pressed="false">Réglages</button>
+</nav>
+<div id="toast" role="status" aria-live="polite"></div>
+<script src="immo.js"></script>
+<script>
+'use strict';
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const eur = x => x === null || x === undefined ? '—' : Math.round(x).toLocaleString('fr-FR') + ' €';
+const pc = (x, signe = true) => x === null || x === undefined ? '—' : (signe && x >= 0 ? '+' : '') + Math.round(x * 100) + ' %';
+const ans = x => x === null || x === undefined ? '—' : Number(x).toLocaleString('fr-FR', { maximumFractionDigits: 1 }) + ' ans';
+const keur = x => x === null || x === undefined ? '—' : (Math.round(x / 100) / 10).toLocaleString('fr-FR') + ' k€';
+const pc1 = x => x === null || x === undefined ? '—' : (x * 100).toLocaleString('fr-FR', { maximumFractionDigits: 1 }) + ' %';
+function lireLS(cle, defaut) { try { return JSON.parse(localStorage.getItem(cle)) ?? defaut; } catch (e) { return defaut; } }
+function ecrireLS(cle, v) { try { localStorage.setItem(cle, JSON.stringify(v)); } catch (e) { /* mémoire pleine : sans gravité */ } }
+function toast(t) { const el = $('toast'); el.textContent = t; el.style.display = 'block'; clearTimeout(toast.h); toast.h = setTimeout(() => el.style.display = 'none', 2600); }
+
+// --- Données : Supabase (lien du téléphone, partagé avec Matos), serveur local, ou fichier de démonstration
+const CFG = lireLS('sdradar_cfg', null);
+const LOCAL = /^(localhost|127\.|192\.168\.|10\.)/.test(location.hostname);
+async function rpc(nom, args) {
+  const r = await fetch(`${CFG.u}/rest/v1/rpc/${nom}`, { method: 'POST', signal: AbortSignal.timeout(40000),
+    headers: { apikey: CFG.k, Authorization: 'Bearer ' + CFG.k, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ p_jeton: CFG.t, ...args }) });
+  if (!r.ok) throw new Error('Supabase ' + r.status);
+  return r.status === 204 ? null : r.json();
+}
+async function envoyer(action, args) {   // décision, suivi, ajout : réseau, sinon file d'attente
+  const file = lireLS('sdradar_immo_file', []); file.push({ action, args }); ecrireLS('sdradar_immo_file', file);
+  await viderFile();
+}
+let envoiEnCours = false;
+async function viderFile() {   // un seul envoi à la fois ; la file est relue à chaque tour
+  if (envoiEnCours) return;
+  envoiEnCours = true;
+  try { await viderFileUneFois(); } finally { envoiEnCours = false; }
+  if (lireLS('sdradar_immo_file', []).length && navigator.onLine !== false) setTimeout(viderFile, 30000);
+}
+async function viderFileUneFois() {
+  for (;;) {
+    const file = lireLS('sdradar_immo_file', []);
+    if (!file.length) return;
+    const { action, args } = file[0];
+    try {
+      if (CFG) await rpc((action.startsWith('chasse_') ? 'radar_' : 'radar_viager_') + action, args);
+      else if (LOCAL) { const r = await fetch('/api/viager/' + action, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(args) }); if (!r.ok) throw new Error(r.status); }
+      else return;  // démonstration : rien n'est envoyé
+    } catch (e) { return; }
+    ecrireLS('sdradar_immo_file', lireLS('sdradar_immo_file', []).slice(1));
+  }
+}
+let D = { annonces: [], regles: null, reglages: {} };
+async function charger() {
+  try {
+    if (window.IMMO_DONNEES) D = window.IMMO_DONNEES;
+    else if (CFG) D = await rpc('radar_viager_lire', {});
+    else if (LOCAL) D = await (await fetch('/api/viager')).json();
+    else throw new Error('pas d’accès : ouvre d’abord l’onglet Matos pour configurer le téléphone');
+    // Cache sans les Écartées : le stockage du téléphone est partagé avec Matos (audit I9).
+    ecrireLS('sdradar_immo_cache', { ...D, annonces: D.annonces.filter(a => a.pile_defaut !== 'ecartees') });
+    $('etat-donnees').textContent = window.IMMO_DONNEES ? 'démonstration' : (D.dernier_passage ? 'passage du ' + String(D.dernier_passage.debut || '').slice(0, 10) : '');
+  } catch (e) {
+    const c = lireLS('sdradar_immo_cache', null);
+    if (c) { D = c; $('etat-donnees').textContent = 'hors ligne (dernières données)'; }
+    else { $('main').innerHTML = `<p class="vide">Impossible de charger les annonces : ${esc(e.message)}</p>`; return; }
+  }
+  REGLES = fusion(JSON.parse(JSON.stringify(D.regles || {})), lireLS('sdradar_immo_reglages', null) || D.reglages || {});
+  CRIT = fusion(JSON.parse(JSON.stringify(REGLES.criteres || {})), lireLS('sdradar_immo_criteres', {}));
+  const dec = lireLS('sdradar_immo_decisions', {}), sui = lireLS('sdradar_immo_suivi', {});
+  for (const a of D.annonces) {
+    if (a.decision && !dec[a.id]) dec[a.id] = a.decision;
+    if (a.suivi && !sui[a.id]) sui[a.id] = a.suivi;
+  }
+  ecrireLS('sdradar_immo_decisions', dec); ecrireLS('sdradar_immo_suivi', sui);
+  viderFile();
+  rendre();
+}
+function fusion(base, dessus) { for (const [k, v] of Object.entries(dessus || {})) { if (v && typeof v === 'object' && !Array.isArray(v) && base[k] && typeof base[k] === 'object') fusion(base[k], v); else base[k] = v; } return base; }
+
+// --- État de l'écran
+let REGLES = null, CRIT = null, TRI = null;
+let pileVue = lireLS('sdradar_immo_pile', 'prioritaires');
+let vue = 'annonces';
+const decisions = () => lireLS('sdradar_immo_decisions', {});
+function regleCourante() { return { criteres: CRIT, tri: REGLES.tri }; }
+
+const CURSEURS = [
+  ['age_min_une_tete', 'Âge minimum (1 tête)', 70, 95, 1, ' ans'],
+  ['age_min_deux_tetes_chacune', 'Âge minimum de chacune (2 têtes)', 70, 95, 1, ' ans'],
+  ['age_min_exclusion', 'Exclure toute tête de moins de', 60, 95, 1, ' ans'],
+  ['bouquet_max_eur', 'Bouquet maximum', 0, 150000, 5000, ' €'],
+  ['rente_max_eur_mois', 'Rente maximum par mois', 0, 2000, 50, ' €'],
+];
+function resumeCriteres() {
+  return `Âge ≥ ${CRIT.age_min_une_tete} · 2 têtes ≥ ${CRIT.age_min_deux_tetes_chacune} · Bouquet ≤ ${Math.round(CRIT.bouquet_max_eur / 1000)} k€ · Rente ≤ ${CRIT.rente_max_eur_mois} €`;
+}
+function construireCriteres() {
+  const z = $('reglages-crit');
+  z.innerHTML = CURSEURS.map(([k, lib, mi, ma, pas, u]) => `<div class="curseur"><label for="c-${k}">${lib}</label>
+      <output id="o-${k}">${Number(CRIT[k]).toLocaleString('fr-FR')}${u}</output>
+      <input type="range" id="c-${k}" min="${mi}" max="${ma}" step="${pas}" value="${CRIT[k]}"><span class="elim" id="e-${k}"></span></div>`).join('')
+    + `<div class="cases"><label><input type="checkbox" id="c-deux" ${CRIT.deux_tetes_acceptees ? 'checked' : ''}> 2 têtes acceptées</label>
+       <label><input type="checkbox" id="c-occupe" ${CRIT.types_vente.includes('occupe') ? 'checked' : ''}> occupé</label>
+       <label><input type="checkbox" id="c-libre" ${CRIT.types_vente.includes('libre') ? 'checked' : ''}> libre</label>
+       <label><input type="checkbox" id="c-terme" ${CRIT.types_vente.includes('terme') ? 'checked' : ''}> vente à terme</label></div>
+       <span class="petit" id="e-autres"></span>
+       <button class="lien-defaut" id="c-defaut">Revenir aux critères par défaut</button>`;
+  CURSEURS.forEach(([k, , , , , u]) => { $('c-' + k).oninput = ev => { CRIT[k] = Number(ev.target.value); $('o-' + k).textContent = CRIT[k].toLocaleString('fr-FR') + u; changer(); }; });
+  $('c-deux').onchange = ev => { CRIT.deux_tetes_acceptees = ev.target.checked; changer(); };
+  ['occupe', 'libre', 'terme'].forEach(t => $('c-' + t).onchange = ev => {
+    CRIT.types_vente = ev.target.checked ? [...new Set([...CRIT.types_vente, t])] : CRIT.types_vente.filter(x => x !== t); changer(); });
+  $('c-defaut').onclick = () => { CRIT = JSON.parse(JSON.stringify(REGLES.criteres)); ecrireLS('sdradar_immo_criteres', {}); construireCriteres(); changer(); };
+}
+function changer() { ecrireLS('sdradar_immo_criteres', CRIT); rendreAnnonces(); }
+
+function trierTout() {
+  const visibles = D.annonces;  // les retirées restent consultables, en « À trancher »
+  TRI = Immo.trier(regleCourante(), visibles.map(a => a.metriques));
+  visibles.forEach((a, i) => { a._pile = TRI.piles[i][0]; a._motifs = TRI.piles[i][1]; });
+  return visibles;
+}
+function rendre() {
+  document.querySelectorAll('nav.bas button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.vue === vue)));
+  $('zone-annonces').style.display = vue === 'annonces' ? '' : 'none';
+  if (vue === 'annonces') { if (!$('c-age_min_une_tete')) construireCriteres(); rendreAnnonces(); }
+  else if (vue === 'portefeuille') (window.vuePortefeuille || attente)('Portefeuille');
+  else if (vue === 'suivi') (window.vueSuivi || attente)('Suivi');
+  else if (vue === 'chasseur') (window.vueChasseur || attente)('Chasseur');
+  else (window.vueReglages || attente)('Réglages');
+}
+function attente(nom) { $('main').innerHTML = `<p class="vide">${nom} : à venir.</p>`; }
+const LIB = { prioritaires: 'Prioritaires', a_trancher: 'À trancher', a_discuter: 'À discuter', ecartees: 'Écartées' };
+function rendreAnnonces() {
+  const visibles = trierTout();
+  const dec = decisions();
+  const total = visibles.length;
+  const retenues = TRI.compte.prioritaires + TRI.compte.a_trancher + TRI.compte.a_discuter;
+  $('compteur').textContent = `${retenues} sur ${total}`;
+  $('resume').textContent = resumeCriteres();
+  const el = TRI.elimine_par;
+  const libElim = { age_min_une_tete: el.age, age_min_deux_tetes_chacune: el.age, age_min_exclusion: el.age, bouquet_max_eur: el.bouquet, rente_max_eur_mois: el.rente };
+  CURSEURS.forEach(([k]) => { const e = $('e-' + k); if (e) e.textContent = k.startsWith('age') ? `l'âge élimine ${el.age} annonce(s)` : `élimine ${libElim[k]} annonce(s)`; });
+  const autres = $('e-autres'); if (autres) autres.textContent = `Type de vente : ${el.type_vente} · type de bien : ${el.type_bien} · hors métropole : ${el.zone} · valeur farfelue : ${el.ecart}`;
+  $('piles').innerHTML = Object.keys(LIB).map(p => `<button class="pile p-${p}" data-pile="${p}" role="tab" aria-pressed="${p === pileVue}">${LIB[p]} <span class="n">${TRI.compte[p]}</span></button>`).join('');
+  document.querySelectorAll('.pile').forEach(b => b.onclick = () => { pileVue = b.dataset.pile; ecrireLS('sdradar_immo_pile', pileVue); rendreAnnonces(); });
+  let liste = visibles.filter(a => a._pile === pileVue);
+  // gardées en tête, écartées à la main en bas ; dans chaque groupe, score décroissant
+  const rangDec = a => ({ garder: 0, undefined: 1, plus_tard: 2, ecarter: 3 })[dec[a.id]?.decision];
+  liste.sort((a, b) => rangDec(a) - rangDec(b) || (b.metriques.score ?? -1) - (a.metriques.score ?? -1));
+  $('main').innerHTML = `<button class="ajouter" id="b-ajouter">+ Ajouter une annonce</button>`
+    + (liste.length ? `<div class="liste-cartes">${liste.map(carte).join('')}</div>` : `<p class="vide">Aucune annonce dans « ${LIB[pileVue]} » avec ces critères.</p>`);
+  $('b-ajouter').onclick = ecranAjout;
+  brancherCartes();
+}
+function jauge(a) {
+  const m = a.marche; const v = a.valeur_annoncee ?? a.valeur_reconstituee;
+  if (!m) return `<div class="petit">Marché : ${esc(a.marche_raison || 'inconnu')}</div>`;
+  const bas = Math.min(m.valeur_p25, v ?? m.valeur_p25) * 0.85, haut = Math.max(m.valeur_p75, v ?? m.valeur_p75) * 1.15;
+  const pos = x => Math.max(0, Math.min(100, (x - bas) / (haut - bas) * 100));
+  return `<div class="jauge" aria-hidden="true"><div class="rail"></div>
+    <div class="bande" style="left:${pos(m.valeur_p25)}%;width:${pos(m.valeur_p75) - pos(m.valeur_p25)}%"></div>
+    <div class="med" style="left:${pos(m.valeur)}%"></div>${v ? `<div class="point" style="left:${pos(v)}%"></div>` : ''}</div>
+    <div class="jauge-leg"><span>p25 ${eur(m.valeur_p25)}</span><span>médiane ${eur(m.valeur)}</span><span>p75 ${eur(m.valeur_p75)}</span></div>`;
+}
+function tetesTexte(a) {
+  if (!a.tetes || !a.tetes.length) return 'âge inconnu';
+  const s = { F: 'femme', H: 'homme' };
+  return `${a.tetes.length} tête${a.tetes.length > 1 ? 's' : ''} · ` + a.tetes.map(t => `${s[t.sexe] || 'sexe inconnu'} ${t.age} ans`).join(', ');
+}
+function pointMort(k) {
+  if (k.rentable_a_toute_date) return 'Rentable quelle que soit la date de libération (avec ces hypothèses)';
+  if (!k.point_mort_age) return 'Jamais rentable avec ces hypothèses';
+  return `Rentable si libération avant ses <b>${ans(k.point_mort_age)}</b>`;
+}
+function scenario(a, nom) { return a.calcul ? a.calcul.scenarios.find(s => s.nom === nom) : null; }
+function carte(a) {
+  const dec = decisions()[a.id];
+  const m = a.marche, v = a.valeur_annoncee;
+  const esp = scenario(a, 'espérance prudente'), p5 = scenario(a, 'espérance + 5 ans');
+  const etiquettes = [`<span class="etiq plein" style="--c:var(--${{ prioritaires: 'prio', a_trancher: 'tran', a_discuter: 'disc', ecartees: 'ecar' }[a._pile]})">${LIB[a._pile]}</span>`];
+  if (a.a_completer) etiquettes.push('<span class="etiq jaune">à compléter</span>');
+  if (dec) etiquettes.push(`<span class="etiq" style="--c:var(--texte)">${{ garder: 'gardée', ecarter: 'écartée par toi', plus_tard: 'plus tard' }[dec.decision]}</span>`);
+  if (a.liens && a.liens.length > 1) etiquettes.push(`<span class="etiq" style="--c:var(--ligne)">${a.liens.length} sites</span>`);
+  const style = `--c:var(--${{ prioritaires: 'prio', a_trancher: 'tran', a_discuter: 'disc', ecartees: 'ecar' }[a._pile]})`;
+  return `<article class="carte" style="${style}" data-id="${esc(a.id)}">
+    <div class="tete" data-ouvrir="${esc(a.id)}">
+      <div class="vignette" style="${a.photo ? `background-image:url('${esc(a.photo)}')` : ''}">${a.photo ? '' : 'pas de photo'}</div>
+      <div class="txt"><h3>${esc(a.titre)}</h3><div class="sous">${esc(tetesTexte(a))}</div>
+        <div class="prix">Bouquet ${eur(a.bouquet)} · Rente ${a.rente_mois === null ? '—' : eur(a.rente_mois) + '/mois'}</div>
+        <div>${etiquettes.join(' ')}</div></div></div>
+    <div class="corps">
+      <div class="ligne-val"><span>Valeur annoncée <b>${v ? eur(v) : (a.valeur_reconstituee ? eur(a.valeur_reconstituee) + ' (reconstituée)' : '—')}</b></span>
+        <span>Marché estimé <b>${m ? eur(m.valeur) : '—'}</b>${m ? ` (${m.n_ventes} ventes)` : ''}</span></div>
+      ${jauge(a)}
+      <div class="verdict">« ${a.ecart === null ? 'écart inconnu' : pc(a.ecart) + ' : ' + esc(a.verdict)} »</div>
+      <hr class="sep">
+      <div>${esp ? `Rendement : <b>${pc1(esp.rendement)}/an</b> à l'espérance · <b>${pc1(p5.rendement)}</b> à +5 ans` : 'Rendement : non calculé (données manquantes)'}</div>
+      ${a.calcul ? `<div>${pointMort(a.calcul)}</div>` : ''}
+      <div class="petit">Confiance ${m ? esc(m.confiance) : 'aucune'} · Revente : ${esc({ fluide: 'fluide', moyen: 'moyenne', lent: 'lente' }[a.facilite_revente])}${(a.indices || []).length ? ' · Indice : ' + a.indices.map(i => esc(i.libelle)).join(', ') : ''}${a.metriques.score !== null ? ' · Score ' + Math.round(a.metriques.score) : ''}</div>
+      <div class="motifs">Pourquoi : ${a._motifs.map(esc).join(' · ')}</div>
+      <div class="actions"><button class="garder ${dec?.decision === 'garder' ? 'fait' : ''}" data-dec="garder">Garder</button>
+        <button data-dec="ecarter" class="${dec?.decision === 'ecarter' ? 'fait' : ''}">Écarter ▾</button>
+        <button data-dec="plus_tard" class="${dec?.decision === 'plus_tard' ? 'fait' : ''}">Plus tard</button></div>
+      <div class="motif-choix">${['trop cher', 'âge', 'secteur', 'état du bien', 'valeur farfelue', 'autre'].map(x => `<button data-motif="${x}">${x}</button>`).join('')}</div>
+    </div></article>`;
+}
+function decider(id, decision, motif) {
+  const d = decisions();
+  if (d[id]?.decision === decision && !motif) { delete d[id]; envoyer('decider', { p_id: id, p_decision: null, p_motif: null }); toast('Décision annulée'); }
+  else { d[id] = { decision, motif: motif || null, le: new Date().toISOString() }; envoyer('decider', { p_id: id, p_decision: decision, p_motif: motif || null });
+         toast({ garder: 'Gardée : elle passe dans Suivi', ecarter: 'Écartée' + (motif ? ' : ' + motif : ''), plus_tard: 'Mise de côté' }[decision]); }
+  ecrireLS('sdradar_immo_decisions', d);
+  if (decision === 'garder' && d[id]) { const s = lireLS('sdradar_immo_suivi', {}); if (!s[id]) { s[id] = { etape: 'reperee', historique: [{ etape: 'reperee', le: new Date().toISOString() }] }; ecrireLS('sdradar_immo_suivi', s); envoyer('suivi', { p_id: id, p_etape: 'reperee', p_note: null }); } }
+  rendreAnnonces();
+}
+function brancherCartes() {
+  document.querySelectorAll('.carte').forEach(c => {
+    const id = c.dataset.id;
+    c.querySelector('[data-ouvrir]').onclick = () => ouvrirFiche(id);
+    c.querySelectorAll('[data-dec]').forEach(b => b.onclick = () => {
+      if (b.dataset.dec === 'ecarter') { c.querySelector('.motif-choix').classList.toggle('ouvert'); return; }
+      decider(id, b.dataset.dec);
+    });
+    c.querySelectorAll('[data-motif]').forEach(b => b.onclick = () => decider(id, 'ecarter', b.dataset.motif));
+  });
+}
+// --- Fiche détail
+function graphique(a) {
+  const pts = a.calcul.courbe; if (!pts || !pts.length) return '<p class="petit">Graphique non envoyé au téléphone pour les annonces écartées.</p>';
+  const W = 360, H = 230, g = 44, b = 26;
+  const maxY = Math.max(...pts.map(p => Math.max(p.argent_sorti, p.produit_net))) * 1.08;
+  const x = an => g + an / 30 * (W - g - 10), y = v => H - b - v / maxY * (H - b - 12);
+  const ligne = k => pts.map((p, i) => `${i ? 'L' : 'M'}${x(p.annees).toFixed(1)},${y(p[k]).toFixed(1)}`).join(' ');
+  const e = a.calcul.esperance_ans;
+  const pas = maxY > 300000 ? 100000 : 50000;
+  let grille = '';
+  for (let v = 0; v <= maxY; v += pas) grille += `<line x1="${g}" x2="${W - 10}" y1="${y(v)}" y2="${y(v)}" stroke="#c9d8ea"/><text x="${g - 5}" y="${y(v) + 4}" text-anchor="end" font-size="11" fill="#55657a">${Math.round(v / 1000)} k€</text>`;
+  for (let an = 0; an <= 30; an += 10) grille += `<text x="${x(an)}" y="${H - 6}" text-anchor="${an === 30 ? 'end' : an === 0 ? 'start' : 'middle'}" font-size="11" fill="#55657a">${an} ans</text>`;
+  return `<svg class="graph" viewBox="0 0 ${W} ${H}" role="img" aria-label="Argent sorti cumulé et produit de la revente selon la date de libération">${grille}
+    <line x1="${x(e)}" x2="${x(e)}" y1="8" y2="${H - b}" stroke="#1b2737" stroke-width="2" stroke-dasharray="2 4"/>
+    <text x="${Math.min(x(e) + 4, W - 120)}" y="20" font-size="11" fill="#1b2737">espérance ${ans(e)}</text>
+    <path d="${ligne('argent_sorti')}" fill="none" stroke="#1f5fd6" stroke-width="3"/>
+    <path d="${ligne('produit_net')}" fill="none" stroke="#e07b12" stroke-width="4" stroke-dasharray="10 6"/></svg>
+    <div class="leg"><span><i class="trait"></i> argent sorti cumulé</span><span><i class="trait tirets"></i> produit net de la revente</span><span>Tant que le trait plein reste sous les tirets, l'opération gagne de l'argent.</span></div>`;
+}
+// Bloc « valeur de marché » de la fiche : DVF (N1, N2) ou annonces saisies (N3). Les Écartées
+// arrivent allégées (sans liste de comparables) : la fiche s'ouvre quand même (audit I1).
+function blocMarche(a) {
+  const m = a.marche, comps = m.comparables || [];
+  const n = x => (typeof x === 'number' ? x.toLocaleString('fr-FR') : '—');
+  const ou = m.niveau === 'N3' ? 'annonces classiques saisies à la main'
+    : m.precision === 'commune' ? 'toute la commune' : `communes voisines, ${n(m.rayon_km)} km autour`;
+  let h = `<div class="bloc"><h2>${m.niveau === 'N3' ? 'Estimation sur annonces (N3)' : 'Ventes comparables (DVF)'}</h2>
+    <div>${n(m.n_ventes)} ${m.niveau === 'N3' ? 'annonces' : 'ventes'} · ${esc(ou)}${m.niveau === 'N3' ? '' : `, ${n(m.anciennete_mois)} derniers mois`}. Niveau ${esc(m.niveau)}, confiance ${esc(m.confiance)}.</div>
+    <div>Médiane <b>${n(m.mediane_m2)} €/m²</b> (p25 ${n(m.p25_m2)} – p75 ${n(m.p75_m2)})${(m.motifs_ajustement || []).length ? ' · ' + m.motifs_ajustement.map(esc).join(', ') : ''}.</div>`;
+  if (!comps.length) return h + '<span class="petit">Liste des comparables non envoyée au téléphone pour cette annonce.</span></div>';
+  if (m.niveau === 'N3') return h + `<table><tr><th>#</th><th class="n">Prix</th><th class="n">Surface</th><th class="n">€/m²</th></tr>
+    ${comps.map((c, i) => `<tr><td>${i + 1}</td><td class="n">${eur(c.prix)}</td><td class="n">${n(c.surface)} m²</td><td class="n">${c.prix && c.surface ? n(Math.round(c.prix / c.surface)) : '—'}</td></tr>`).join('')}</table></div>`;
+  return h + carteComparables(a) + `<table><tr><th>#</th><th>Date</th><th class="n">Surface</th><th class="n">Prix</th><th class="n">€/m²</th><th class="n">Distance</th></tr>
+    ${comps.map((c, i) => `<tr><td>${i + 1}</td><td>${esc(c.date || '')}</td><td class="n">${n(c.surface)} m²</td><td class="n">${eur(c.valeur)}</td><td class="n">${n(c.prix_m2)}</td><td class="n">${n(c.distance_km)} km</td></tr>`).join('')}</table></div>`;
+}
+function carteComparables(a) {
+  const c = (a.marche.comparables || []).filter(x => typeof x.lat === 'number' && typeof x.lon === 'number'); if (!c.length) return '';
+  const lat0 = c.reduce((s, x) => s + x.lat, 0) / c.length, lon0 = c.reduce((s, x) => s + x.lon, 0) / c.length;
+  const loin = Math.max(...c.map(x => x.distance_km || 0), 0.5);
+  const r = Math.max(a.marche.rayon_km || 0, loin, 0.5), S = 220, k = (S / 2 - 14) / r;
+  const px = x => S / 2 + (x.lon - lon0) * 111 * Math.cos(lat0 * Math.PI / 180) * k, py = x => S / 2 - (x.lat - lat0) * 111 * k;
+  return `<svg viewBox="0 0 ${S} ${S}" style="width:min(100%,280px)" role="img" aria-label="Position des ventes comparables">
+    <circle cx="${S / 2}" cy="${S / 2}" r="${S / 2 - 12}" fill="#f3f8fe" stroke="#c9d8ea" stroke-width="2"/>
+    ${c.map((x, i) => `<g><circle cx="${px(x)}" cy="${py(x)}" r="9" fill="#ffd23f" stroke="#1b2737" stroke-width="2"/><text x="${px(x)}" y="${py(x) + 4}" font-size="10" text-anchor="middle" font-weight="800">${i + 1}</text></g>`).join('')}
+    <text x="${S / 2}" y="${S - 2}" font-size="11" text-anchor="middle" fill="#55657a">rayon ${r} km</text></svg>`;
+}
+function ouvrirFiche(id) {
+  const a = D.annonces.find(x => x.id === id); if (!a) return;
+  $('f-titre').textContent = a.titre;
+  const k = a.calcul, m = a.marche;
+  const lignes = (obj, libs) => libs.filter(([c]) => obj[c] !== undefined).map(([c, l, note]) => `<tr><td>${l}${note ? ` <span class="petit">${esc(note)}</span>` : ''}</td><td class="n">${eur(obj[c])}</td></tr>`).join('');
+  const s = a.score;
+  let h = `<div class="bloc"><h2>${esc(a.titre)}</h2><div>${esc(tetesTexte(a))}</div>
+      <div>Bouquet <b>${eur(a.bouquet)}</b> · Rente <b>${a.rente_mois === null ? '—' : eur(a.rente_mois) + '/mois'}</b> · Valeur annoncée <b>${eur(a.valeur_annoncee)}</b></div>
+      <div class="motifs">Pile « ${LIB[a._pile] || ''} » : ${(a._motifs || []).map(esc).join(' · ')}</div>
+      ${a.url ? `<a class="lien" href="${esc(a.url)}" target="_blank" rel="noopener noreferrer">Voir l'annonce sur ${esc(a.site || 'le site')}</a>` : ''}</div>`;
+  if (k && k.leger) h += `<div class="bloc"><h2>Calcul</h2><p>Annonce écartée : seul le résumé est envoyé au téléphone. Le calcul détaillé est sur le PC (rendement ${pc1(scenario(a, 'espérance prudente')?.rendement)}/an à l'espérance).</p></div>`;
+  else if (k) {
+    h += `<div class="bloc"><h2>Coûts d'entrée</h2><table>${lignes(k.couts_entree, [['bouquet', 'Bouquet'], ['notaire', 'Frais de notaire', '8 % de bouquet + capital de la rente (estimation)'], ['honoraires', 'Honoraires en plus']])}
+        <tr class="total"><td>Total</td><td class="n">${eur(k.couts_entree.total)}</td></tr></table>
+        <span class="petit">Capital de la rente estimé : ${eur(k.couts_entree.capital_rente)}.</span></div>
+      <div class="bloc"><h2>Frais annuels (1re année)</h2><table>${lignes(k.frais_annuels, [['rente', 'Rente (indexée chaque année)'], ['taxe_fonciere', 'Taxe foncière', k.frais_annuels.origines.taxe_fonciere], ['gros_travaux', 'Provision gros travaux'], ['copropriete', 'Copropriété non récupérable', k.frais_annuels.origines.copropriete], ['assurance', 'Assurance propriétaire non occupant'], ['structure', 'Frais de structure (comptable)']])}
+        <tr class="total"><td>Total par an</td><td class="n">${eur(k.frais_annuels.total)}</td></tr></table></div>
+      <div class="bloc"><h2>Selon la date de libération</h2>${graphique(a)}
+        <table class="serre"><tr><th>Libération</th><th class="n">Dans</th><th class="n">Sorti</th><th class="n">Gain</th><th class="n">Par an</th></tr>
+        ${k.scenarios.map(x => `<tr><td>${esc(x.nom)}</td><td class="n">${ans(x.annees)}</td><td class="n">${keur(x.argent_sorti)}</td><td class="n">${keur(x.gain_net)}</td><td class="n">${pc1(x.rendement)}</td></tr>`).join('')}</table>
+        <span class="petit">Montants en milliers d'euros (k€). « Par an » = taux de rendement annuel.</span>
+        <div>${pointMort(k)}${k.point_mort_objectif_age && !k.rentable_a_toute_date ? ` ; au-dessus de l'objectif de rendement avant ses <b>${ans(k.point_mort_objectif_age)}</b>` : ''}.</div>
+        <div>Décote réelle : coût projeté à l'espérance ${eur(k.decote.cout_total)}, soit ${pc1(k.decote.ratio)} de la valeur de marché.</div>
+        <div>Rente théorique pour ce bouquet : <b>${eur(k.rente_theorique_mois)}/mois</b> (demandée ${eur(a.rente_mois)} : ${pc(k.ecart_rente)}). Droit d'occupation ${eur(k.droit_occupation)} ; loyer de marché ${eur(k.loyer_an)}/an (${esc(k.loyer_origine)}).</div>
+        <div class="petit">Hypothèses : ${(a.hypotheses || []).map(esc).join(' · ')}. Résultat avant impôt sur la plus-value.</div></div>`;
+  } else h += `<div class="bloc"><h2>Calcul</h2><p>Pas de calcul : ${esc(a.marche_raison || (a.metriques.manquants || []).join(', ') || 'données manquantes')}.</p></div>`;
+  if (m) h += blocMarche(a);
+  if (s) {
+    const noms = { rendement_esperance_prudente: 'Rendement à l\'espérance', rendement_plus_5_ans: 'Rendement à +5 ans', decote_reelle: 'Décote réelle', facilite_revente: 'Facilité de revente', confiance_estimation: 'Confiance de l\'estimation', indices_urbanisme: 'Indices d\'urbanisme' };
+    h += `<div class="bloc"><h2>Score ${Math.round(s.total)} sur 100</h2>${Object.keys(s.notes).map(n => `<div><div class="ligne-val"><span>${noms[n]} <span class="petit">poids ${Math.round(s.poids[n] * 100)} %</span></span><b>${s.notes[n]} / 100</b></div><div class="barre-score"><div style="width:${s.notes[n]}%"></div></div></div>`).join('')}</div>`;
+  }
+  h += `<div class="bloc"><h2>Indices d'urbanisme</h2>${(a.indices || []).length ? a.indices.map(i => `<div>${esc(i.libelle)}${i.lien ? ` — <a class="lien" href="${esc(i.lien)}" target="_blank" rel="noopener noreferrer">${esc(i.source)}</a> <span class="petit">(${esc(i.date)})</span>` : ''}</div>`).join('') : '<div>Aucun indice connu pour cette commune.</div>'}<span class="petit">Des indices, pas des preuves.</span></div>`;
+  if (window.blocN3) h += window.blocN3(a);
+  if (window.blocMontage && k && !k.leger) h += window.blocMontage(a);
+  if (!(k && k.leger)) h += `<div class="bloc"><h2>Questions à poser à l'agence</h2>${(a.questions || []).length ? '<ul class="q">' + a.questions.map(q => `<li>${esc(q)}</li>`).join('') + '</ul>' : '<div>L\'annonce répond déjà aux questions habituelles.</div>'}</div>`;
+  if ((a.prix_historique || []).length) h += `<div class="bloc"><h2>Historique des prix</h2>${a.prix_historique.map(p => `<div>jusqu'au ${esc(String(p.jusqu_au).slice(0, 10))} : bouquet ${eur(p.bouquet)}, rente ${eur(p.rente_mois)}</div>`).join('')}</div>`;
+  if ((a.liens || []).length > 1) h += `<div class="bloc"><h2>Vue sur ${a.liens.length} sites</h2>${a.liens.map(l => `<a class="lien" href="${esc(l.url)}" target="_blank" rel="noopener noreferrer">${esc(l.site)}</a>`).join(' · ')}</div>`;
+  $('f-contenu').innerHTML = h;
+  $('fiche').classList.add('ouvert'); $('fiche').scrollTop = 0;
+  history.pushState({ fiche: id }, '');
+}
+$('f-fermer').onclick = () => history.back();
+window.addEventListener('popstate', () => $('fiche').classList.remove('ouvert'));
+// --- Ajouter une annonce (voie C)
+function ecranAjout() {
+  $('main').innerHTML = `<div class="bloc"><h2>Ajouter une annonce</h2>
+    <p class="petit">Colle le texte d'une annonce (mail d'agence, PDF, Leboncoin…) ou l'adresse d'une annonce Viagimmo, Univers Viager ou Viager Europe. Elle sera lue et analysée au prochain passage.</p>
+    <label class="champ">Texte de l'annonce<textarea id="a-texte" rows="8" maxlength="20000"></textarea></label>
+    <label class="champ">Adresse (facultatif)<input id="a-url" type="url" maxlength="2000" placeholder="https://…"></label>
+    <div class="actions"><button class="bouton" id="a-ok">Envoyer</button><button class="bouton clair" id="a-annuler">Annuler</button></div></div>`;
+  $('a-annuler').onclick = rendreAnnonces;
+  $('a-ok').onclick = async () => {
+    const texte = $('a-texte').value.trim(), url = $('a-url').value.trim();
+    if (!texte && !url) { toast('Colle un texte ou une adresse'); return; }
+    if (url && !/^https?:\/\//i.test(url)) { toast('L’adresse doit commencer par https://'); return; }
+    await envoyer('ajouter', { p_texte: texte || null, p_url: url || null });
+    toast('Annonce enregistrée : analysée au prochain passage'); rendreAnnonces();
+  };
+}
+document.querySelectorAll('nav.bas button').forEach(b => b.onclick = () => { vue = b.dataset.vue; ecrireLS('sdradar_immo_vue', vue); rendre(); scrollTo(0, 0); });
+vue = lireLS('sdradar_immo_vue', 'annonces');
+$('b-criteres').onclick = () => { const z = $('reglages-crit'); const o = !z.classList.contains('ouvert'); z.classList.toggle('ouvert', o); $('b-criteres').setAttribute('aria-expanded', String(o)); };
+window.addEventListener('online', viderFile);
+// Démonstration hors ligne (fichier local) : données générées par scripts/viager_passage.py --demo
+if (location.protocol === 'file:' || new URLSearchParams(location.search).has('demo')) {
+  const s = document.createElement('script'); s.src = '../data/state/viager_demo.js';
+  s.onload = charger; s.onerror = () => { $('main').innerHTML = '<p class="vide">Fichier de démonstration absent.</p>'; };
+  document.head.appendChild(s);
+} else charger();
+</script>
+<script>
+'use strict';
+// --- Comparateur de montage (dans la fiche) : calcul fait au PC (domains/viager/fiscal.py)
+window.blocMontage = function (a) {
+  const m = a.calcul.montage; if (!m) return '';
+  const ligne = x => x.calcule
+    ? `<tr><td>${esc(x.nom)}<br><span class="petit">${esc(x.detail || '')}</span></td><td class="n">${eur(x.impot)}</td><td class="n"><b>${eur(x.net_apres_impot)}</b></td></tr>`
+    : `<tr><td>${esc(x.nom)}</td><td class="n" colspan="2"><span class="petit">non calculé : ${esc(x.raison)}</span></td></tr>`;
+  return `<div class="bloc"><h2>Comparateur de montage</h2>
+    <div class="etiq jaune" style="align-self:flex-start">${esc(m.avertissement.split('.')[0])}</div>
+    <span class="petit">Revente à l'espérance prudente. Pas de surtaxe au-delà de 50 000 € de plus-value, pas de majoration forfaitaire des frais, pas d'amortissement ni de dividendes : ces règles ne sont pas encore sourcées.</span>
+    <table><tr><th>Montage</th><th class="n">Impôt</th><th class="n">Net</th></tr>${['a', 'b', 'c'].map(k => ligne(m[k])).join('')}</table></div>`;
+};
+
+// --- Portefeuille (copie du calcul Python dans immo.js, mêmes résultats à graine égale)
+function viagerDe(a) {
+  const k = a.calcul, esp = k.scenarios.find(s => s.nom === 'espérance prudente');
+  return { entree: k.couts_entree.total, rente_an: k.frais_annuels.rente, frais_an: k.frais_annuels.total - k.frais_annuels.rente,
+           produit_net: esp.produit_net, delai_ans: REGLES.revente.delai_mois[a.facilite_revente] / 12, survie: k.survie_annuelle };
+}
+window.vuePortefeuille = function () {
+  const P = REGLES.portefeuille, sauve = lireLS('sdradar_immo_portefeuille', {});
+  const gardees = D.annonces.filter(a => decisions()[a.id]?.decision === 'garder' && a.calcul && a.calcul.survie_annuelle);
+  const candidates = D.annonces.filter(a => a.calcul && a.calcul.survie_annuelle && a.calcul.couts_entree && !a.retiree);
+  const val = (k, d) => sauve[k] ?? d;
+  $('main').innerHTML = `<div class="bloc"><h2>Portefeuille</h2>
+    <p class="petit">Tirages au hasard de la date de libération de chaque viager (tables de mortalité). Résultats indicatifs, avant impôt.</p>
+    <label class="champ">Coussin de départ (€)<input id="p-coussin" type="number" min="0" step="1000" value="${val('coussin', P.coussin_depart_eur ?? '')}" placeholder="à saisir"></label>
+    <label class="champ">Capacité d'épargne par mois (€)<input id="p-capacite" type="number" min="0" step="100" value="${val('capacite', P.capacite_mensuelle_eur ?? '')}" placeholder="à saisir"></label>
+    <div class="curseur"><label for="p-part">Part du produit de revente réinvestie</label><output id="o-part"></output>
+      <input id="p-part" type="range" min="0" max="1" step="0.05" value="${val('part', P.part_reinvestie)}"></div>
+    <label class="champ">Viagers simulés<select id="p-mode">
+      <option value="gardees">Les annonces gardées (${gardees.length})</option>
+      <option value="type">N viagers identiques à une annonce</option></select></label>
+    <div id="p-type-zone"><label class="champ">Annonce type<select id="p-type">${candidates.map(a => `<option value="${esc(a.id)}">${esc(a.titre)} · ${esc(tetesTexte(a))}</option>`).join('')}</select></label>
+      <div class="curseur"><label for="p-n">Nombre de viagers</label><output id="o-n"></output><input id="p-n" type="range" min="1" max="20" step="1" value="${val('n', 3)}"></div></div>
+    <button class="bouton" id="p-calculer">Calculer</button></div><div id="p-resultat"></div>`;
+  $('p-mode').value = val('mode', gardees.length ? 'gardees' : 'type');
+  if (val('type', null) && candidates.some(a => a.id === val('type'))) $('p-type').value = val('type');
+  const maj = () => { $('o-part').textContent = Math.round($('p-part').value * 100) + ' %'; $('o-n').textContent = $('p-n').value; $('p-type-zone').style.display = $('p-mode').value === 'type' ? '' : 'none'; };
+  ['p-part', 'p-n', 'p-mode'].forEach(i => $(i).oninput = maj); maj();
+  $('p-calculer').onclick = () => {
+    const coussin = Number($('p-coussin').value), capacite = Number($('p-capacite').value);
+    if ($('p-coussin').value === '' || $('p-capacite').value === '') { toast('Saisis le coussin et la capacité mensuelle'); return; }
+    ecrireLS('sdradar_immo_portefeuille', { coussin, capacite, part: Number($('p-part').value), mode: $('p-mode').value, type: $('p-type').value, n: Number($('p-n').value) });
+    let viagers;
+    if ($('p-mode').value === 'gardees') viagers = gardees.map(viagerDe);
+    else { const a = candidates.find(x => x.id === $('p-type').value); viagers = a ? Array(Number($('p-n').value)).fill(viagerDe(a)) : []; }
+    if (!viagers.length) { toast('Aucun viager à simuler'); return; }
+    $('p-resultat').innerHTML = '<p class="vide">Calcul en cours…</p>';
+    setTimeout(() => {
+      const o = { coussin, capacite_mensuelle: capacite, part_reinvestie: Number($('p-part').value), indexation: REGLES.moteur.indexation_rente_par_an,
+                  tirages: P.tirages, horizons: P.horizons_ans, graine: 1, max_viagers: P.max_viagers_simules };
+      const r = Immo.simuler(viagers, o);
+      const type = $('p-mode').value === 'type' ? viagers[0] : viagers[0];
+      const n95 = Immo.tenables(type, { ...o, tirages: Math.min(P.tirages, 2000) }, P.niveau_de_surete);
+      afficherPortefeuille(r, n95, viagers.length, $('p-mode').value === 'type');
+    }, 30);
+  };
+};
+function afficherPortefeuille(r, n95, n, modeType) {
+  const P = REGLES.portefeuille;
+  const barre = p => `<div class="barre-score" style="width:100%"><div style="width:${Math.round(p * 100)}%;background:var(--tran)"></div></div>`;
+  const ev = r.eventail_tresorerie, W = 360, H = 220, g = 50, b = 24;
+  const lo = Math.min(0, ...ev.map(x => x.bas)), hi = Math.max(...ev.map(x => x.haut)) * 1.05 || 1;
+  const x = a => g + a / (ev.length - 1) * (W - g - 10), y = v => H - b - (v - lo) / (hi - lo) * (H - b - 10);
+  const zone = ev.map((p, i) => `${i ? 'L' : 'M'}${x(p.annee)},${y(p.haut)}`).join(' ') + ' ' + [...ev].reverse().map(p => `L${x(p.annee)},${y(p.bas)}`).join(' ') + ' Z';
+  const med = ev.map((p, i) => `${i ? 'L' : 'M'}${x(p.annee)},${y(p.median)}`).join(' ');
+  let axes = `<line x1="${g}" x2="${W - 10}" y1="${y(0)}" y2="${y(0)}" stroke="#1b2737" stroke-width="1.5"/><text x="${g - 4}" y="${y(0) + 4}" font-size="11" text-anchor="end" fill="#1b2737">0 €</text>
+    <text x="${g - 4}" y="${y(hi) + 10}" font-size="11" text-anchor="end" fill="#55657a">${Math.round(hi / 1000)} k€</text>`;
+  for (let a = 0; a < ev.length; a += 5) axes += `<text x="${x(a)}" y="${H - 6}" font-size="11" text-anchor="${a ? 'middle' : 'start'}" fill="#55657a">${a} ans</text>`;
+  const vi = r.eventail_viagers[r.eventail_viagers.length - 1];
+  $('p-resultat').innerHTML = `<div class="bloc"><h2>Résultat (${n} viager${n > 1 ? 's' : ''})</h2>
+    ${Object.entries(r.probabilite_manque).map(([h, p]) => `<div><div class="ligne-val"><span>Risque de manquer de trésorerie d'ici ${h} ans</span><b>${Math.round(p * 100)} %</b></div>${barre(p)}</div>`).join('')}
+    <div class="ligne-val"><span>Trésorerie la plus basse (cas défavorable, 1 fois sur 20)</span><b>${eur(r.tresorerie_min_defavorable)}</b></div>
+    <div class="ligne-val"><span>Première libération : en général</span><b>${ans(r.premiere_liberation_mediane)}</b></div>
+    <div class="ligne-val"><span>Première libération : cas défavorable (9 fois sur 10 avant)</span><b>${ans(r.premiere_liberation_defavorable)}</b></div>
+    <div class="ligne-val"><span>Viagers ${modeType ? 'de ce type' : 'comme le premier gardé'} tenables à ${Math.round(P.niveau_de_surete * 100)} %</span><b>${n95}</b></div></div>
+    <div class="bloc"><h2>Boule de neige : trésorerie</h2>
+    <svg class="graph" viewBox="0 0 ${W} ${H}" role="img" aria-label="Éventail de la trésorerie année par année">${axes}
+      <path d="${zone}" fill="#9cb3cf" opacity=".6"/><path d="${med}" fill="none" stroke="#1f5fd6" stroke-width="3"/></svg>
+    <div class="leg"><span><i class="trait"></i> cas médian</span><span><i style="display:inline-block;width:22px;height:12px;background:#9cb3cf"></i> 8 cas sur 10 dans cette bande (bas / haut)</span></div>
+    <div>Dans ${ev.length - 1} ans : trésorerie entre ${eur(ev[ev.length - 1].bas)} et ${eur(ev[ev.length - 1].haut)} (médiane ${eur(ev[ev.length - 1].median)}) ; viagers détenus entre ${Math.round(vi.bas)} et ${Math.round(vi.haut)} (médiane ${Math.round(vi.median)}).</div>
+    <span class="petit">${P.tirages.toLocaleString('fr-FR')} tirages, graine fixe : le même calcul donne le même résultat. Nombre tenable calculé sur ${Math.min(P.tirages, 2000).toLocaleString('fr-FR')} tirages.</span></div>`;
+}
+
+// --- Réglages : toutes les hypothèses du JSON, par thème, modifiables ; retour aux valeurs par défaut
+const THEMES = [['criteres', 'Critères'], ['tri', 'Tri'], ['marche', 'Valeur de marché'], ['moteur', 'Calcul viager'], ['frais', 'Frais'],
+                ['revente', 'Revente'], ['score', 'Score'], ['portefeuille', 'Portefeuille'], ['alertes', 'Alertes téléphone'],
+                ['fiscal', 'Fiscal (indicatif — à valider avec l’expert-comptable)']];
+// Même règle que domains/viager/regles.py (est_fraction) : 0,03 = 3 %.
+const FRACTIONS = ['taux', 'pct', 'part_', 'tolerance', 'decote', 'ajustement', 'ecart', 'indexation', 'revalorisation', 'rendement', 'surete', 'hausse', 'facteur'];
+const estFraction = (cle, d) => typeof d === 'number' && !Number.isInteger(d) && d > -1 && d < 1 && FRACTIONS.some(m => cle.includes(m));
+function champsDe(obj, chemin) {
+  const out = [];
+  for (const [k, v] of Object.entries(obj || {})) {
+    if (k === 'origine' || k.startsWith('origine') || k === 'note' || k.endsWith('_sources') || k.endsWith('_fichiers')) continue;
+    const c = [...chemin, k];
+    if (v && typeof v === 'object' && !Array.isArray(v)) out.push(...champsDe(v, c));
+    else if (typeof v === 'number' || typeof v === 'boolean' || v === null) out.push([c, v]);
+  }
+  return out;
+}
+const lire = (o, c) => c.reduce((x, k) => x?.[k], o);
+window.vueReglages = function () {
+  const defaut = D.regles, perso = lireLS('sdradar_immo_reglages', D.reglages || {});
+  const courant = fusion(JSON.parse(JSON.stringify(defaut)), perso);
+  $('main').innerHTML = `<div class="bloc"><h2>Réglages</h2><p class="petit">Toutes les hypothèses du calcul. Les critères et le portefeuille changent tout de suite sur le téléphone ; le reste (valeur de marché, calcul viager, frais) au prochain passage du PC.</p>
+    <button class="bouton clair" id="r-defaut">Revenir aux valeurs par défaut</button></div>`
+    + THEMES.map(([t, lib]) => `<div class="bloc"><h2>${lib}</h2>${champsDe(courant[t], [t]).map(([c, v]) => {
+        const id = 'r-' + c.join('-'), d = lire(defaut, c), change = JSON.stringify(v) !== JSON.stringify(d);
+        const nom = c.slice(1).join(' › ').replace(/_/g, ' ');
+        return typeof d === 'boolean'
+          ? `<label class="cases"><label><input type="checkbox" id="${id}" data-c="${esc(c.join('.'))}" ${v ? 'checked' : ''}> ${esc(nom)}</label>${change ? '<span class="etiq jaune">modifié</span>' : ''}</label>`
+          : `<label class="champ">${esc(nom)} ${change ? '<span class="etiq jaune">modifié</span>' : ''}<input type="number" step="any" id="${id}" data-c="${esc(c.join('.'))}" value="${v ?? ''}" placeholder="${d === null ? 'non défini' : ''}"><span class="petit">par défaut : ${d === null ? 'non défini' : Number(d).toLocaleString('fr-FR')}${estFraction(c[c.length - 1], d) ? ' — fraction : 0,03 = 3 %' : ''}</span></label>`;
+      }).join('')}</div>`).join('') + `<button class="bouton" id="r-enregistrer" style="margin:0 0 20px">Enregistrer</button>`;
+  $('r-defaut').onclick = () => { ecrireLS('sdradar_immo_reglages', {}); envoyer('reglages', { p_valeur: {} }); appliquerReglages({}); toast('Valeurs par défaut rétablies'); window.vueReglages(); };
+  $('r-enregistrer').onclick = () => {
+    const diff = {}, refus = [];
+    document.querySelectorAll('[data-c]').forEach(el => {
+      const c = el.dataset.c.split('.'), d = lire(defaut, c);
+      const v = el.type === 'checkbox' ? el.checked : (el.value === '' ? null : Number(el.value));
+      const nom = c.slice(1).join(' › ').replace(/_/g, ' ');
+      if (v === null && d !== null) { refus.push(nom + ' : vide'); return; }
+      if (typeof v === 'number' && (Number.isNaN(v) || (estFraction(c[c.length - 1], d) && (v < -1 || v > 1)) || (d >= 0 && v < 0))) { refus.push(nom + ' : valeur impossible'); return; }
+      if (JSON.stringify(v) !== JSON.stringify(d)) { let o = diff; c.slice(0, -1).forEach(k => o = o[k] = o[k] || {}); o[c[c.length - 1]] = v; }
+    });
+    if (refus.length) { toast('Non enregistré — ' + refus.slice(0, 2).join(' ; ')); return; }
+    ecrireLS('sdradar_immo_reglages', diff); envoyer('reglages', { p_valeur: diff }); appliquerReglages(diff);
+    toast('Réglages enregistrés'); window.vueReglages();
+  };
+};
+// --- Suivi : Repérée → Contactée → Dossier reçu → Visite → Offre → Compromis → Acte / Abandonnée
+const ETAPES = [['reperee', 'Repérée'], ['contactee', 'Contactée'], ['dossier_recu', 'Dossier reçu'], ['visite', 'Visite'],
+                ['offre', 'Offre'], ['compromis', 'Compromis'], ['acte', 'Acte']];
+function brouillon(a) {
+  const qs = (a.questions || []).slice(0, 5).map(q => '- ' + q).join('\n');
+  return `Bonjour,\n\nVotre annonce de viager m'intéresse : ${a.titre}${a.url ? ' (' + a.url + ')' : ''}.\n`
+    + `Bouquet ${eur(a.bouquet)}, rente ${a.rente_mois === null ? 'non précisée' : eur(a.rente_mois) + ' par mois'}.\n\n`
+    + (qs ? `Pourriez-vous me préciser :\n${qs}\n\n` : '')
+    + `Je souhaiterais recevoir le dossier complet (diagnostics, taxe foncière, charges, projet d'acte) et convenir d'une visite.\n\nBien cordialement,`;
+}
+window.vueSuivi = function () {
+  const suivi = lireLS('sdradar_immo_suivi', {});
+  const liste = D.annonces.filter(a => suivi[a.id] || decisions()[a.id]?.decision === 'garder');
+  if (!liste.length) { $('main').innerHTML = '<p class="vide">Rien à suivre : appuie sur « Garder » sur une annonce pour la suivre ici.</p>'; return; }
+  $('main').innerHTML = liste.map(a => {
+    const s = suivi[a.id] || { etape: 'reperee', historique: [] };
+    const i = ETAPES.findIndex(e => e[0] === s.etape);
+    return `<div class="bloc" data-id="${esc(a.id)}"><h2 style="cursor:pointer" data-ouvrir="${esc(a.id)}">${esc(a.titre)}</h2>
+      <div class="petit">${esc(tetesTexte(a))} · bouquet ${eur(a.bouquet)} · rente ${eur(a.rente_mois)}</div>
+      <div class="piles" style="flex-wrap:wrap">${ETAPES.map(([k, l], j) => `<button class="pile ${j <= i && s.etape !== 'abandonnee' ? 'p-prioritaires' : 'p-ecartees'}" aria-pressed="${k === s.etape}" data-etape="${k}">${j + 1}. ${l}</button>`).join('')}
+        <button class="pile p-ecartees" aria-pressed="${s.etape === 'abandonnee'}" data-etape="abandonnee">Abandonnée</button></div>
+      <label class="champ">Note (motif d'abandon, réponse de l'agence…)<input data-note value="${esc(s.note || '')}" maxlength="300"></label>
+      <div class="actions"><button data-brouillon>Copier le premier message</button>${a.url ? `<button data-lien>Ouvrir l'annonce</button>` : ''}</div>
+      <span class="petit">L'envoi reste manuel : rien ne part automatiquement.</span></div>`;
+  }).join('');
+  document.querySelectorAll('#main .bloc[data-id]').forEach(b => {
+    const id = b.dataset.id, a = D.annonces.find(x => x.id === id);
+    const changer = (etape, note) => {
+      const tout = lireLS('sdradar_immo_suivi', {});
+      const s = tout[id] || { historique: [] };
+      s.etape = etape; s.note = note; s.historique = [...(s.historique || []), { etape, le: new Date().toISOString() }];
+      tout[id] = s; ecrireLS('sdradar_immo_suivi', tout);
+      envoyer('suivi', { p_id: id, p_etape: etape, p_note: note || null });
+    };
+    b.querySelectorAll('[data-etape]').forEach(x => x.onclick = () => {
+      if (x.dataset.etape === 'abandonnee' && !b.querySelector('[data-note]').value) { toast("Écris d'abord le motif d'abandon dans la note"); return; }
+      changer(x.dataset.etape, b.querySelector('[data-note]').value); window.vueSuivi(); });
+    b.querySelector('[data-note]').onchange = e => { const s = lireLS('sdradar_immo_suivi', {})[id]; changer(s?.etape || 'reperee', e.target.value); };
+    b.querySelector('[data-brouillon]').onclick = async () => {
+      try { await navigator.clipboard.writeText(brouillon(a)); toast('Message copié : colle-le dans ton mail'); }
+      catch (e) { prompt('Copie ce message :', brouillon(a)); }
+    };
+    const l = b.querySelector('[data-lien]'); if (l) l.onclick = () => window.open(a.url, '_blank', 'noopener');
+    b.querySelector('[data-ouvrir]').onclick = () => ouvrirFiche(id);
+  });
+};
+
+// --- N3 : comparables saisis à la main quand DVF ne suffit pas (zone rurale, Alsace-Moselle)
+window.blocN3 = function (a) {
+  if (a.marche && a.marche.niveau !== 'N3') return '';
+  const deja = lireLS('sdradar_immo_n3', {})[a.id] || a.comparables_n3 || [];
+  const lignes = [...deja, ...Array(Math.max(0, 5 - deja.length)).fill({})].slice(0, 5);
+  return `<div class="bloc" id="n3"><h2>Annonces classiques comparables (N3)</h2>
+    <p class="petit">Pas assez de ventes réelles ici. Saisis 3 à 5 maisons ou appartements semblables en vente classique (même secteur, type, surface) : prix affiché et surface. L'estimation, « sur annonces », retire ${Math.round(REGLES.marche.n3_decote_negociation * 100)} % de négociation ; elle est recalculée au prochain passage.</p>
+    ${lignes.map((c, i) => `<div class="actions"><input type="number" min="0" step="1000" placeholder="prix €" data-n3p="${i}" value="${c.prix ?? ''}" style="flex:1;min-height:44px;border:2px solid var(--ligne);border-radius:12px;padding:8px">
+      <input type="number" min="0" step="1" placeholder="surface m²" data-n3s="${i}" value="${c.surface ?? ''}" style="flex:1;min-height:44px;border:2px solid var(--ligne);border-radius:12px;padding:8px"></div>`).join('')}
+    <button class="bouton" data-n3ok="${esc(a.id)}">Enregistrer les comparables</button></div>`;
+};
+document.addEventListener('click', e => {
+  const b = e.target.closest('[data-n3ok]'); if (!b) return;
+  const id = b.dataset.n3ok, z = $('n3');
+  const comps = [0, 1, 2, 3, 4].map(i => ({ prix: Number(z.querySelector(`[data-n3p="${i}"]`).value), surface: Number(z.querySelector(`[data-n3s="${i}"]`).value) }))
+    .filter(c => c.prix > 0 && c.surface > 0);
+  if (comps.length < REGLES.marche.n3_saisie_min) { toast(`Il en faut au moins ${REGLES.marche.n3_saisie_min}`); return; }
+  const tout = lireLS('sdradar_immo_n3', {}); tout[id] = comps; ecrireLS('sdradar_immo_n3', tout);
+  envoyer('comparables', { p_id: id, p_donnees: comps }); toast('Comparables enregistrés : estimation au prochain passage');
+});
+function appliquerReglages(diff) {
+  REGLES = fusion(JSON.parse(JSON.stringify(D.regles)), diff);
+  CRIT = fusion(JSON.parse(JSON.stringify(REGLES.criteres)), lireLS('sdradar_immo_criteres', {}));
+  if ($('c-age_min_une_tete')) $('reglages-crit').innerHTML = '';
+}
+</script>
+<script>
+'use strict';
+// --- Chasseur immo : petits biens (cave, garage, local pour les étuis ; lots de parkings).
+// Lecture et verdicts faits au PC (domains/chasse_immo) ; la rue de Sarkis reste sur ce
+// téléphone, dans data/state/ et Supabase (accès par jeton), jamais dans un fichier versionné.
+const ARRONDISSEMENTS = Array.from({ length: 16 }, (_, i) => ['132' + String(i + 1).padStart(2, '0'), (i ? (i + 1) + 'e' : '1er') + ' arrondissement']);
+const CORRESPOND = { 'oui': ['Correspond', 'plein', 'var(--prio)'], 'à vérifier': ['À vérifier', '', 'var(--tran)'], 'non': ['Ne correspond pas', '', 'var(--ecar)'] };
+let CH = null;
+async function chargerChasse() {
+  try {
+    let r;
+    if (window.IMMO_DONNEES) r = { telephone: window.IMMO_DONNEES.chasse || null };
+    else if (CFG) r = await rpc('radar_chasse_lire', {});
+    else if (LOCAL) r = await (await fetch('/api/chasse')).json();
+    else throw new Error('pas d’accès');
+    CH = r || {};
+    ecrireLS('sdradar_immo_chasse_cache', CH);
+  } catch (e) { CH = lireLS('sdradar_immo_chasse_cache', null) || { telephone: null }; }
+  if (!lireLS('sdradar_immo_chasse_perso', null) && (CH.perso || CH.telephone?.perso?.rue)) ecrireLS('sdradar_immo_chasse_perso', CH.perso || CH.telephone.perso);
+  const dec = lireLS('sdradar_immo_chasse_decisions', {});
+  for (const [k, v] of Object.entries(CH.decisions || {})) if (!dec[k]) dec[k] = v;
+  for (const a of CH.telephone?.annonces || []) if (a.decision && !dec[a.id]) dec[a.id] = a.decision;
+  ecrireLS('sdradar_immo_chasse_decisions', dec);
+}
+const persoChasse = () => lireLS('sdradar_immo_chasse_perso', {}) || {};
+function etiqCorrespond(c) { const [t, cl, col] = CORRESPOND[c] || CORRESPOND['à vérifier']; return `<span class="etiq ${cl}" style="--c:${col}">${t}</span>`; }
+function carteChasse(a, dec) {
+  const ev = a.evaluations.find(e => e.fiche === a.fiche) || a.evaluations[0] || {};
+  const l = a.lecture || {}, d = dec[a.id];
+  const faits = [l.types?.length ? l.types.join(', ') : null, l.transaction, l.prix ? eur(l.prix) + (l.transaction === 'location' ? ' / mois' : '') : null,
+    l.unites > 1 ? l.unites + ' unités' : null, l.surface ? l.surface.toLocaleString('fr-FR') + ' m²' : null,
+    l.code_postal, ev.prix_unite ? eur(ev.prix_unite) + ' la place' : null,
+    ev.distance_m !== null && ev.distance_m !== undefined ? '≈ ' + Math.round(ev.distance_m / 10) * 10 + ' m de chez toi' : null].filter(Boolean);
+  return `<div class="bloc" data-cid="${esc(a.id)}" style="${d === 'ecarter' ? 'opacity:.6' : ''}">
+    <div class="actions" style="align-items:center">${etiqCorrespond(a.correspond)}<b>${esc(ev.nom || '')}</b>${d ? `<span class="etiq">${d === 'garder' ? 'gardée' : 'écartée'}</span>` : ''}${ev.verdict ? `<span class="etiq">${esc(ev.verdict)}</span>` : ''}</div>
+    <div class="petit">${esc(faits.join(' · '))}</div>
+    <div>${esc(a.extrait)}${a.extrait.length >= 280 ? '…' : ''}</div>
+    ${(ev.motifs || []).length ? '<ul class="q">' + ev.motifs.map(m => `<li>${esc(m)}</li>`).join('') + '</ul>' : ''}
+    <div class="actions"><button class="bouton" data-cdec="garder">Garder</button><button class="bouton clair" data-cdec="ecarter">Écarter</button>${a.url ? `<button class="bouton clair" data-clien>Ouvrir l'annonce</button>` : ''}</div>
+    <span class="petit">${esc(a.origine || '')}${a.le ? ' · ' + esc(String(a.le).slice(0, 10)) : ''}</span></div>`;
+}
+window.vueChasseur = async function () {
+  if (!CH) { $('main').innerHTML = '<p class="vide">Chargement…</p>'; await chargerChasse(); }
+  if (vue !== 'chasseur') return;
+  const T = CH.telephone, perso = persoChasse(), dec = lireLS('sdradar_immo_chasse_decisions', {});
+  const fiches = T?.fiches || [];
+  const fl = fiches.find(f => f.id === 'local_etuis') || {}, fp = fiches.find(f => f.id === 'lots_parkings') || {};
+  const reg = perso.fiches || {};
+  const rayon = reg.local_etuis?.rayon_m ?? fl.rayon_m ?? 500;
+  const ratio = reg.lots_parkings?.prix_unite_max_fois_reference ?? fp.prix_unite_max_fois_reference ?? 0.85;
+  let h = `<button class="ajouter" id="ch-ajouter">+ Coller une annonce</button>`;
+  h += `<div class="bloc"><h2>Ta rue</h2>
+    <p class="petit">Sert à mesurer la distance d'un local à chez toi. Elle reste sur ce téléphone, sur le PC et dans ta base privée ; jamais dans un fichier du projet ni envoyée ailleurs.</p>
+    <label class="champ">Rue<input id="ch-rue" maxlength="120" value="${esc(perso.rue || '')}" placeholder="ex. rue de la République"></label>
+    <label class="champ">Arrondissement<select id="ch-commune"><option value="">—</option>${ARRONDISSEMENTS.map(([c, n]) => `<option value="${c}" ${perso.commune === c ? 'selected' : ''}>${n}</option>`).join('')}</select></label>
+    <div class="curseur"><label for="ch-rayon">Local pour les étuis : distance maximum</label><output id="o-ch-rayon">${rayon} m</output><input id="ch-rayon" type="range" min="100" max="2000" step="50" value="${rayon}"></div>
+    <div class="curseur"><label for="ch-ratio">Lots de parkings : « bon prix » jusqu'à</label><output id="o-ch-ratio">${Math.round(ratio * 100)} % du prix réel</output><input id="ch-ratio" type="range" min="0.5" max="0.95" step="0.05" value="${ratio}"></div>
+    <button class="bouton" id="ch-enregistrer">Enregistrer</button></div>`;
+  if (!T) {
+    h += '<p class="vide">Pas encore de données du chasseur : elles arrivent au prochain passage du PC.</p>';
+    $('main').innerHTML = h; brancherChasse(); return;
+  }
+  const liste = T.annonces || [];
+  const n = c => liste.filter(a => a.correspond === c).length;
+  h += `<div class="bloc"><h2>Annonces lues</h2><div class="petit">${n('oui')} correspondent · ${n('à vérifier')} à vérifier · ${n('non')} ne correspondent pas${T.maj ? ' · mis à jour le ' + esc(T.maj) : ''}</div>
+    ${liste.length ? '' : '<div>Aucune pour l\'instant. Colle une annonce (Leboncoin, PAP, agence…) ou classe tes alertes e-mail sous le libellé Gmail « IMMO/chasse ».</div>'}</div>`;
+  h += liste.filter(a => a.correspond !== 'non' || dec[a.id] === 'garder').map(a => carteChasse(a, dec)).join('');
+  const non = liste.filter(a => a.correspond === 'non' && dec[a.id] !== 'garder');
+  if (non.length) h += `<details class="bloc"><summary><b>${non.length} qui ne correspondent pas</b></summary>${non.map(a => carteChasse(a, dec)).join('')}</details>`;
+  h += `<div class="bloc"><h2>Prix réels des places (DVF, 3 ans)</h2>
+    <span class="petit">Ventes de dépendances seules (parking, box, garage, cave : DVF ne les distingue pas), prix par place. « Lots » = ventes de 2 places ou plus d'un coup.</span>
+    <table><tr><th>Secteur</th><th class="n">Toutes ventes</th><th class="n">Lots</th></tr>${(T.references || []).map(r => `<tr><td>${esc(r.nom)}</td>
+      <td class="n">${r.toutes ? eur(r.toutes.mediane) + `<br><span class="petit">${r.toutes.n} ventes</span>` : '—'}</td>
+      <td class="n">${r.lots ? '<b>' + eur(r.lots.mediane) + `</b><br><span class="petit">${r.lots.n} ventes</span>` : '—'}</td></tr>`).join('')}</table></div>`;
+  if ((T.lots_recents || []).length) h += `<div class="bloc"><h2>Lots vendus ces 2 ans, du moins cher à la place</h2>
+    <table><tr><th>Date · lieu</th><th class="n">Places</th><th class="n">Prix / place</th></tr>${T.lots_recents.map(v => `<tr><td>${esc(v.date.slice(0, 7))} · ${esc(v.commune)}<br><span class="petit">${esc(v.voie || '')}</span></td><td class="n">${v.unites}</td><td class="n">${eur(v.prix_unite)}<br><span class="petit">${eur(v.prix)} en tout</span></td></tr>`).join('')}</table></div>`;
+  h += `<div class="bloc"><h2>Ce que cherche le chasseur</h2>${fiches.map(f => `<div><b>${esc(f.nom)}</b><br><span class="petit">${esc(f.description || '')}</span></div>`).join('')}
+    <span class="petit">Aucune collecte automatique : Leboncoin interdit les robots. Les annonces viennent de ce que tu colles et de tes alertes e-mail.</span></div>`;
+  $('main').innerHTML = h; brancherChasse();
+};
+function brancherChasse() {
+  $('ch-ajouter').onclick = ecranAjoutChasse;
+  $('ch-rayon').oninput = e => { $('o-ch-rayon').textContent = e.target.value + ' m'; };
+  $('ch-ratio').oninput = e => { $('o-ch-ratio').textContent = Math.round(e.target.value * 100) + ' % du prix réel'; };
+  $('ch-enregistrer').onclick = () => {
+    const v = { rue: $('ch-rue').value.trim() || null, commune: $('ch-commune').value || null,
+      fiches: { local_etuis: { rayon_m: Number($('ch-rayon').value) }, lots_parkings: { prix_unite_max_fois_reference: Number($('ch-ratio').value) } } };
+    ecrireLS('sdradar_immo_chasse_perso', v); envoyer('chasse_perso', { p_valeur: v });
+    toast('Enregistré : pris en compte au prochain passage');
+  };
+  document.querySelectorAll('#main [data-cid]').forEach(b => {
+    const id = b.dataset.cid, a = (CH.telephone?.annonces || []).find(x => x.id === id);
+    b.querySelectorAll('[data-cdec]').forEach(x => x.onclick = () => {
+      const dec = lireLS('sdradar_immo_chasse_decisions', {}); dec[id] = x.dataset.cdec; ecrireLS('sdradar_immo_chasse_decisions', dec);
+      envoyer('chasse_decider', { p_id: id, p_decision: x.dataset.cdec }); window.vueChasseur();
+    });
+    const l = b.querySelector('[data-clien]'); if (l && a) l.onclick = () => window.open(a.url, '_blank', 'noopener');
+  });
+}
+function ecranAjoutChasse() {
+  $('main').innerHTML = `<div class="bloc"><h2>Coller une annonce (chasseur)</h2>
+    <p class="petit">Colle le texte complet : type de bien, prix, nombre de places, rue ou quartier, code postal. Une adresse seule ne suffit pas (Leboncoin ne se lit pas automatiquement). Lue au prochain passage du PC.</p>
+    <label class="champ">Texte de l'annonce<textarea id="ch-texte" rows="8" maxlength="20000"></textarea></label>
+    <label class="champ">Adresse de l'annonce (facultatif)<input id="ch-url" type="url" maxlength="2000" placeholder="https://…"></label>
+    <div class="actions"><button class="bouton" id="ch-ok">Envoyer</button><button class="bouton clair" id="ch-annuler">Annuler</button></div></div>`;
+  $('ch-annuler').onclick = () => window.vueChasseur();
+  $('ch-ok').onclick = async () => {
+    const texte = $('ch-texte').value.trim(), url = $('ch-url').value.trim();
+    if (!texte) { toast('Colle le texte de l’annonce'); return; }
+    if (url && !/^https?:\/\//i.test(url)) { toast('L’adresse doit commencer par https://'); return; }
+    await envoyer('chasse_ajouter', { p_texte: texte, p_url: url || null });
+    toast('Annonce enregistrée : lue au prochain passage'); window.vueChasseur();
+  };
+}
+</script>
+</body>
+</html>

@@ -118,9 +118,20 @@
   #v-compte { position:absolute; top:14px; left:16px; color:#fff; font-size:15px; font-weight:700; }
   #v-fermer { position:absolute; top:14px; right:16px; color:#fff; font-size:15px; border:2px solid #fff; border-radius:8px; padding:6px 10px; background:transparent; }
   @media (prefers-reduced-motion: reduce) { .carte.devant { transition:none; } }
+  /* --- deux grands onglets Matos · Immo (Immo vit dans son propre cadre : une erreur là-bas ne
+     peut pas casser Matos) --- */
+  .onglets-haut { flex:none; display:flex; gap:8px; padding:calc(6px + env(safe-area-inset-top)) 16px 0; }
+  .onglets-haut button { flex:1; height:40px; border-radius:12px; border:2px solid var(--ligne); background:transparent; color:var(--doux); font-size:15px; font-weight:800; letter-spacing:.5px; }
+  .onglets-haut button[aria-pressed="true"] { background:var(--accent); border-color:var(--accent); color:#101114; }
+  .onglets-haut ~ header { padding-top:8px; }
+  #immo-cadre { position:fixed; left:0; right:0; bottom:0; width:100%; border:0; display:none; z-index:40; background:#e6f1fd; }
 </style>
 </head>
 <body>
+<nav class="onglets-haut" id="onglets-haut" aria-label="Matos ou Immo">
+  <button id="o-matos" aria-pressed="true">Matos</button>
+  <button id="o-immo" aria-pressed="false">Immo</button>
+</nav>
 <header><div><b>SD Radar</b><span id="reste"></span></div>
   <button id="b-menu" aria-label="Menu : argus, calcul Japon, réglages" aria-expanded="false">···</button></header>
 <div id="menu" role="menu">
@@ -767,6 +778,42 @@ function formulaireFiche(zone, c) {
 }
 if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js');
 charger();
+</script>
+<script>
+// Onglets Matos · Immo. Script à part : rien ici ne touche au code de Matos. Immo est chargé dans
+// un cadre (immo.html), seulement quand on l'ouvre ; le dernier onglet utilisé est mémorisé.
+(function () {
+  const CLE = 'sdradar_onglet';
+  const bm = document.getElementById('o-matos'), bi = document.getElementById('o-immo');
+  const barre = document.getElementById('onglets-haut');
+  let cadre = null, onglet = 'matos';
+  function placer() {  // un iframe ne s'étire pas avec top/bottom : hauteur explicite
+    if (!cadre) return;
+    const haut = barre.getBoundingClientRect().bottom;
+    cadre.style.top = haut + 'px';
+    cadre.style.height = (innerHeight - haut) + 'px';
+  }
+  function montrer(o) {
+    onglet = o;
+    try { localStorage.setItem(CLE, o); } catch (e) { /* mémoire pleine : sans gravité */ }
+    bm.setAttribute('aria-pressed', String(o === 'matos'));
+    bi.setAttribute('aria-pressed', String(o === 'immo'));
+    if (o === 'immo' && !cadre) {
+      cadre = document.createElement('iframe');
+      cadre.id = 'immo-cadre'; cadre.title = 'Immo'; cadre.src = 'immo.html';
+      document.body.appendChild(cadre);
+    }
+    if (cadre) { placer(); cadre.style.display = o === 'immo' ? 'block' : 'none'; if (o === 'immo') cadre.focus(); }
+  }
+  // Pendant qu'Immo est affiché, les flèches du clavier ne doivent pas trier les cartes Matos.
+  addEventListener('keydown', e => { if (onglet === 'immo') e.stopImmediatePropagation(); }, true);
+  addEventListener('resize', placer);
+  bm.onclick = () => montrer('matos');
+  bi.onclick = () => montrer('immo');
+  let dernier = 'matos';
+  try { dernier = localStorage.getItem(CLE) || 'matos'; } catch (e) { dernier = 'matos'; }
+  if (dernier === 'immo') montrer('immo');
+})();
 </script>
 </body>
 </html>
