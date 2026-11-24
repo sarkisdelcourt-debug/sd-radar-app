@@ -715,7 +715,7 @@ function carteChasse(a, dec) {
   const faits = [l.types?.length ? l.types.join(', ') : null, l.transaction, l.prix ? eur(l.prix) + (l.transaction === 'location' ? ' / mois' : '') : null,
     l.unites > 1 ? l.unites + ' unités' : null, l.surface ? l.surface.toLocaleString('fr-FR') + ' m²' : null,
     l.code_postal, ev.prix_unite ? eur(ev.prix_unite) + ' la place' : null,
-    ev.distance_m !== null && ev.distance_m !== undefined ? '≈ ' + Math.round(ev.distance_m / 10) * 10 + ' m de chez toi' : null].filter(Boolean);
+    ev.distance_m !== null && ev.distance_m !== undefined ? '≈ ' + Math.round(ev.distance_m / 10) * 10 + (ev.distance_a_pied === false ? ' m à vol d’oiseau' : ' m à pied') + ' de chez toi' : null].filter(Boolean);
   return `<div class="bloc" data-cid="${esc(a.id)}" style="${d === 'ecarter' ? 'opacity:.6' : ''}">
     <div class="actions" style="align-items:center">${etiqCorrespond(a.correspond)}<b>${esc(ev.nom || '')}</b>${d ? `<span class="etiq">${d === 'garder' ? 'gardée' : 'écartée'}</span>` : ''}${ev.verdict ? `<span class="etiq">${esc(ev.verdict)}</span>` : ''}</div>
     <div class="petit">${esc(faits.join(' · '))}</div>
@@ -738,7 +738,7 @@ window.vueChasseur = async function () {
     <p class="petit">Sert à mesurer la distance d'un local à chez toi. Elle reste sur ce téléphone, sur le PC et dans ta base privée ; jamais dans un fichier du projet ni envoyée ailleurs.</p>
     <label class="champ">Rue<input id="ch-rue" maxlength="120" value="${esc(perso.rue || '')}" placeholder="ex. rue de la République"></label>
     <label class="champ">Arrondissement<select id="ch-commune"><option value="">—</option>${ARRONDISSEMENTS.map(([c, n]) => `<option value="${c}" ${perso.commune === c ? 'selected' : ''}>${n}</option>`).join('')}</select></label>
-    <div class="curseur"><label for="ch-rayon">Local pour les étuis : distance maximum</label><output id="o-ch-rayon">${rayon} m</output><input id="ch-rayon" type="range" min="100" max="2000" step="50" value="${rayon}"></div>
+    <div class="curseur"><label for="ch-rayon">Local pour les étuis : distance maximum à pied</label><output id="o-ch-rayon">${rayon} m</output><input id="ch-rayon" type="range" min="100" max="2000" step="50" value="${rayon}"></div>
     <div class="curseur"><label for="ch-ratio">Lots de parkings : « bon prix » jusqu'à</label><output id="o-ch-ratio">${Math.round(ratio * 100)} % du prix réel</output><input id="ch-ratio" type="range" min="0.5" max="0.95" step="0.05" value="${ratio}"></div>
     <button class="bouton" id="ch-enregistrer">Enregistrer</button></div>`;
   if (!T) {
