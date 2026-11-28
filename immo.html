@@ -317,6 +317,7 @@ function carte(a) {
   const esp = scenario(a, 'espérance prudente'), p5 = scenario(a, 'espérance + 5 ans');
   const etiquettes = [`<span class="etiq plein" style="--c:var(--${{ prioritaires: 'prio', a_trancher: 'tran', a_discuter: 'disc', ecartees: 'ecar' }[a._pile]})">${LIB[a._pile]}</span>`];
   if (a.a_completer) etiquettes.push('<span class="etiq jaune">à compléter</span>');
+  if ((a._motifs || []).some(x => x.startsWith('⚠'))) etiquettes.push('<span class="etiq jaune">⚠ prix très bas</span>');
   if (dec) etiquettes.push(`<span class="etiq" style="--c:var(--texte)">${{ garder: 'gardée', ecarter: 'écartée par toi', plus_tard: 'plus tard' }[dec.decision]}</span>`);
   if (a.liens && a.liens.length > 1) etiquettes.push(`<span class="etiq" style="--c:var(--ligne)">${a.liens.length} sites</span>`);
   const style = `--c:var(--${{ prioritaires: 'prio', a_trancher: 'tran', a_discuter: 'disc', ecartees: 'ecar' }[a._pile]})`;

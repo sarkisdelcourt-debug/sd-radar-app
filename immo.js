@@ -51,11 +51,10 @@
       if (m.retiree) at.push('annonce retirée du site');
       if (m.statut === 'sous_compromis') at.push("sous compromis : à vérifier auprès de l'agence");
       if (!m.tetes || !m.tetes.length) at.push('âge inconnu');
-      else if (m.tetes.some(x => !x.sexe)) at.push("sexe d'une tête inconnu (calcul fait avec la table femmes, prudente)");
       (m.manquants || []).forEach(x => at.push('donnée manquante : ' + x));
       (m.incoherences || []).forEach(x => at.push(x));
       if (!m.confiance || m.confiance === 'basse') at.push(m.confiance ? 'estimation de marché peu fiable' : 'valeur de marché inconnue' + (m.marche_raison ? ` (${m.marche_raison})` : ''));
-      if (e !== null && e !== undefined && e < t.ecart_plancher_a_trancher) at.push(`valeur annoncée ${pct(e)} sous le marché estimé : vérifier commune, surface et type de bien`);
+      const attention = e !== null && e !== undefined && e < t.ecart_plancher_a_trancher ? [`⚠ prix très bas : valeur annoncée ${pct(e)} sous le marché estimé, vérifier commune, surface et type de bien`] : [];
       if (e !== null && e !== undefined && e > t.ecart_prioritaire_max) at.push(`valeur annoncée ${pct(e)} : fourchette haute`);
       if (m.niveau === 'N3' && (e === null || e === undefined || e > t.n3_prioritaire_seulement_si_ecart_max)) at.push('estimation sur annonces et valeur annoncée au-dessus');
       const depasse = [];
@@ -67,12 +66,12 @@
       if (depasse.length) {
         const haut = m.score !== null && m.score !== undefined && seuil !== null && m.score >= seuil;
         const marge = depasse.every(x => x[1] <= x[2]);
-        if (haut && marge) return ['a_discuter', [...depasse.map(x => x[3]), `score ${Math.round(m.score)}, dans les ${100 - d.score_min_centile} % meilleurs`, ...at.map(x => 'à vérifier : ' + x)]];
+        if (haut && marge) return ['a_discuter', [...depasse.map(x => x[3]), `score ${Math.round(m.score)}, dans les ${100 - d.score_min_centile} % meilleurs`, ...at.map(x => 'à vérifier : ' + x), ...attention]];
         depasse.forEach(x => elimine[x[0]]++);
         return ['ecartees', depasse.map(x => x[3])];
       }
-      if (at.length) return ['a_trancher', at];
-      return ['prioritaires', ['critères respectés, ' + (e !== null && e !== undefined ? 'dans le marché' : 'valeur reconstituée')]];
+      if (at.length) return ['a_trancher', [...at, ...attention]];
+      return ['prioritaires', ['critères respectés, ' + (attention.length ? 'sous le marché' : e !== null && e !== undefined ? 'dans le marché' : 'valeur reconstituée'), ...attention]];
     });
     const compte = Object.fromEntries(PILES.map(p => [p, piles.filter(x => x[0] === p).length]));
     return { piles, compte, elimine_par: elimine, seuil_score_a_discuter: seuil };
